@@ -1,0 +1,71 @@
+Copyright (C) 2003 W. Michael Petullo <mike@flyn.org>
+
+dmapd is A server that provides DAAP and DPAP shares
+
+= OVERVIEW =================================================================
+	
+The dmapd project provides a GObject-based, Open Source implementation 
+of DMAP sharing with the following features:
+
+ o Support for both DAAP and DPAP
+
+ o Support for realtime transcoding of media formats not natively 
+ supported by clients
+
+ o Support for many metadata formats, such as those associated with Ogg 
+ Vorbis and MP3 (e.g., ID3)
+
+ o Detection of video streams so that clients may play them as video
+
+ o Use of GStreamer to support a wide range of audio and video CODECs
+
+ o Caching of photograph thumbnails to avoid regenerating them each time 
+ the server restarts
+
+= BUILDING =================================================================
+
+To build, cross your fingers and try...
+
+ 1. ./configure
+ 2. make
+ 3. make install
+
+Read the ``INSTALL'' file for generic detailed information on installing
+this program.
+	
+= NASTY DETAILS ============================================================
+	
+Any client that supports DAAP or DPAP may play media made available 
+by dmapd. This includes the following software clients and hardware devices:
+
+ o Apple iTunes
+
+ o Apple iPhoto
+
+ o Rhythmbox
+
+ o Roku SoundBridge
+
+Dmapd can read metadata from any music file supported by GStreamer. 
+In order to use this feature you must have the appropriate GStreamer 
+plugins installed. The following plugins are always required if you 
+wish to use this feature:
+
+ o app
+
+ o decodebin
+
+ o typefindfunctions
+
+The following plugins are required for the corresponding media types:
+
+ o mad (MP3)
+
+ o id3demux (MP3)
+
+ o ogg (Ogg vorbis, etc.)
+
+ o vorbis (Ogg vorbis)
+
+ o flac (FLAC)
+
