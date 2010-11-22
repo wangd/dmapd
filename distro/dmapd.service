@@ -1,0 +1,11 @@
+[Unit]
+Description=DMAP Service
+After=avahi-daemon.service
+
+[Service]
+Type=forking
+PIDFile=/var/run/dmapd/dmapd.pid
+ExecStart=/usr/sbin/dmapd
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,333 @@
+<project>
+	<name>dmapd</name>
+	<mansect>8</mansect>
+	<copyright>GPLv2+</copyright>
+	<one-liner>A server that provides DAAP and DPAP shares</one-liner>
+	<synopsis>[options]</synopsis>
+	<url>http://www.flyn.org/projects/dmapd/</url>
+	<maintainer>W. Michael Petullo &lt;mike@flyn.org&gt;</maintainer>
+	<architecture>any</architecture>
+	<rpm-group>Applications/Multimedia</rpm-group>
+	<rpm-pre-requires>shadow-utils</rpm-pre-requires>
+	<rpm-post-requires>chkconfig</rpm-post-requires>
+	<rpm-preun-requires>chkconfig, initscripts</rpm-preun-requires>
+	<rpm-postun-requires>initscripts</rpm-postun-requires>
+	<rpm-build-requires>libdmapsharing-devel >= 2.1.2, vips-devel, gstreamer-devel</rpm-build-requires>
+	<deb-section></deb-section>
+	<deb-priority>optional</deb-priority>
+	<deb-depends></deb-depends>
+	<deb-recommends></deb-recommends>
+	<options>
+		<opt>
+		<argument>directory</argument>
+		<description>directory containing media files to serve</description>
+		</opt>
+	</options>
+<overview>
+<para>
+The dmapd project provides a GObject-based, Open Source implementation
+of DMAP sharing with the following features:
+</para>
+<itemizedlist>
+	<listitem>Support for both DAAP and DPAP</listitem>
+	<listitem>Support for realtime transcoding of media formats not natively supported by clients</listitem>
+	<listitem>Support for many metadata formats, such as those associated with Ogg Vorbis and MP3 (e.g., ID3)</listitem>
+	<listitem>Detection of video streams so that clients may play them as video</listitem>
+	<listitem>Use of GStreamer to support a wide range of audio and video CODECs</listitem>
+	<listitem>Caching of photograph thumbnails to avoid regenerating them each time the server restarts</listitem>
+</itemizedlist>
+</overview>
+
+<nasty-details>
+<para>
+Any client that supports DAAP or DPAP may play media made available
+by dmapd. This includes the following software clients and hardware devices:
+
+</para>
+<itemizedlist>
+	<listitem>Apple iTunes<trade/></listitem>
+	<listitem>Apple iPhoto<trade/></listitem>
+	<listitem>Rhythmbox</listitem>
+	<listitem>Roku SoundBridge<trade/></listitem>
+</itemizedlist>
+
+<para>
+Dmapd can read metadata from any music file supported by GStreamer. In order
+to use this feature you must have the appropriate GStreamer plugins
+installed. The following plugins are always required if you wish to use
+this feature:
+
+</para>
+
+<itemizedlist>
+	<listitem>app</listitem>
+	<listitem>decodebin</listitem>
+	<listitem>typefindfunctions</listitem>
+</itemizedlist>
+
+<para>
+The following plugins are required for the corresponding media types:
+
+</para>
+
+<itemizedlist>
+	<listitem>mad (MP3)</listitem>
+	<listitem>id3demux (MP3)</listitem>
+	<listitem>ogg (Ogg vorbis, etc.)</listitem>
+	<listitem>vorbis (Ogg vorbis)</listitem>
+	<listitem>flac (FLAC)</listitem>
+</itemizedlist>
+</nasty-details>
+
+<configure-flags>--disable-static</configure-flags>
+
+<rpm-install>
+	<command>rm -f %{buildroot}%{_libdir}/libdmapd.la</command>
+	<command>rm -f %{buildroot}%{_libdir}/dmapd/%{version}/modules/*.la</command>
+	<command>rm -f %{buildroot}%{_sbindir}/dmapd-test</command>
+
+	<!-- Remove for systemd: -->
+	<command>rm -f %{buildroot}/lib/systemd/system/dmapd.service</command>
+
+	<command>mkdir -p %{buildroot}%{_localstatedir}/cache/dmapd</command>
+	<command>mkdir -p %{buildroot}%{_localstatedir}/run/dmapd</command>
+
+	<!-- Remove for systemd: -->
+	<command>install -D -m 755 distro/dmapd.fedora %{buildroot}%{_initddir}/dmapd</command>
+
+	<command>install -D -m 644 distro/dmapd.conf %{buildroot}%{_sysconfdir}/dmapd.conf</command>
+</rpm-install>
+
+<rpm-pre-install>
+	<command>getent group dmapd >/dev/null || groupadd -r dmapd</command>
+	<command>getent passwd dmapd >/dev/null || useradd -r -g dmapd -d / -s /sbin/nologin -c "dmapd Daemon" dmapd</command>
+	<command>exit 0</command>
+</rpm-pre-install>
+
+<rpm-post-install>
+	<command>/sbin/ldconfig</command>
+
+	<!-- Add for systemd:
+	<command>if [ $1 -eq 1 ]; then</command>
+	<command>       /bin/systemctl enable dmapd.service >/dev/null 2>&amp;1 || :</command>
+	<command>fi</command>
+	-->
+
+	<!-- Remove for systemd: -->
+	<command>/sbin/chkconfig --add dmapd</command>
+
+</rpm-post-install>
+
+<rpm-pre-uninstall>
+	<!-- Add for systemd:
+	<command>if [ $1 -eq 0 ]; then</command>
+	<command>	/bin/systemctl disable dmapd.service >/dev/null 2>&amp;1 || :</command>
+	<command>	/bin/systemctl stop dmapd.service >/dev/null 2>&amp;1 || :</command>
+	<command>fi</command>
+	-->
+
+	<!-- Remove for systemd: -->
+	<command>if [ $1 = 0 ]; then /sbin/service dmapd stop >/dev/null 2>&amp;1; /sbin/chkconfig --del dmapd; fi</command>
+
+</rpm-pre-uninstall>
+
+<rpm-post-uninstall>
+	<command>/sbin/ldconfig</command>
+
+	<!-- Add for systemd:
+	<command>if [ $1 -ge 1 ] ; then</command>
+	<command>	/bin/systemctl daemon-reload >/dev/null 2>&amp;1 || :</command>
+	<command>	/bin/systemctl try-restart dmapd.service >/dev/null 2>&amp;1 || :</command>
+	<command>fi</command>
+	-->
+
+	<!-- Remove for systemd: -->
+	<command>if [ "$1" -ge "1" ]; then /sbin/service dmapd condrestart >/dev/null 2>&amp;1 || :; fi</command>
+</rpm-post-uninstall>
+
+<files>
+	<path>%{_libdir}/*.so.0</path>
+	<path>%{_libdir}/*.so.%{version}</path>
+	<path>%{_libdir}/dmapd</path>
+	<path>%{_sbindir}/dmapd</path>
+
+	<!-- Remove for systemd: -->
+	<path>%{_initddir}/dmapd</path>
+
+	<!-- Add for systemd:
+	<path>/lib/systemd/system/dmapd.service</path>
+	-->
+
+	<path>%config(noreplace) %{_sysconfdir}/dmapd.conf</path>
+	<path>%attr(0700,dmapd,root) %{_localstatedir}/cache/dmapd</path>
+	<path>%attr(0700,dmapd,root) %{_localstatedir}/run/dmapd</path>
+        <path>%{_mandir}/*/*</path>
+</files>
+
+<package name="devel">
+	<one-liner>Files needed to develop modules using dmapd's libraries</one-liner>
+	<rpm-group>Development/Libraries</rpm-group>
+	<rpm-requires>dmapd = %{version}-%{release}, pkgconfig</rpm-requires>
+	<overview>
+		<para>
+This package provides the libraries, include files, and other resources
+needed for developing modules using dmapd's API.
+		</para>
+	</overview>
+	<files>
+		<path>%{_libdir}/pkgconfig/dmapd.pc</path>
+		<path>%{_includedir}/dmapd-*/</path>
+		<path>%{_libdir}/*.so</path>
+	</files>
+</package>
+
+<changelog>
+	<change>
+		<date>Mon Nov 01 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.31-1</version>
+		<description>New upstream version</description>
+	</change>
+	<change>
+		<date>Wed Sep 29 2010</date>
+		<author>jkeating</author>
+		<version>0.0.25-5</version>
+		<description>Rebuilt for gcc bug 634757</description>
+	</change>
+        <change>
+		<date>Thu Sep 16 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.25-4</version>
+		<description>Bump release in an attempt to build on Rawhide</description>
+        </change>
+        <change>
+		<date>Wed Aug 04 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.25-3</version>
+		<description>Use VIPS instead of GraphicsMagick</description>
+        </change>
+        <change>
+		<date>Tue Jun 22 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.25-2</version>
+		<description>Don't install dmapd-test</description>
+        </change>
+        <change>
+		<date>Tue Jun 22 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.25-1</version>
+		<description>New upstream version</description>
+        </change>
+        <change>
+		<date>Fri Jun 04 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.24-1</version>
+		<description>New upstream version</description>
+        </change>
+        <change>
+		<date>Wed Feb 17 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.23-1</version>
+		<description>New upstream version, set User= in dmapd.conf</description>
+        </change>
+        <change>
+		<date>Fri Feb 05 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.22-1</version>
+		<description>New upstream version</description>
+        </change>
+        <change>
+		<date>Thu Jan 28 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.21-1</version>
+		<description>New upstream version</description>
+		<description>no longer install /etc/sysconfig/dmapd, use /etc/dmapd.conf</description>
+		<description>no longer create /var/db/dmapd*</description>
+        </change>
+        <change>
+		<date>Thu Jan 14 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.18-2</version>
+		<description>use macro for init directory throughout</description>
+        </change>
+        <change>
+		<date>Fri Dec 04 2009</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.18-1</version>
+		<description>New upstream version</description>
+		<description>reorder specfile blocks to resemble output of rpmdev-newspec</description>
+		<description>add noreplace to config file</description>
+		<description>do not depend on avahi-, dbus- or libsoup-devel, just libdmapsharing</description>
+		<description>make pre, post, etc. requirements satisfy Fedora SysV init docs</description>
+        </change>
+        <change>
+		<date>Sun Nov 22 2009</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.17-1</version>
+		<description>New upstream version</description>
+		<description>Fix ldconfig placement</description>
+		<description>No empty NEWS</description>
+		<description>Move data directory to /var/db/dmapd</description>
+        </change>
+        <change>
+		<date>Sat Nov 21 2009</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.16-1</version>
+		<description>New upstream version</description>
+		<description>Move %%doc to %%files</description>
+		<description>No empty FAQ</description>
+		<description>Require GraphicsMagick-devel</description>
+        </change>
+        <change>
+		<date>Tue Nov 10 2009</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.15-1</version>
+		<description>New upstream version</description>
+		<description>Require dbus-devel to build</description>
+		<description>Properly set permissions of /etc/sysconfig/dmapd</description>
+		<description>Run ldconfig</description>
+		<description>Fix user creation</description>
+        </change>
+        <change>
+		<date>Thu Jul 23 2009</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.14-1</version>
+		<description>New upstream version</description>
+		<description>Fix URL</description>
+        </change>
+        <change>
+		<date>Thu May 07 2009</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.10-1</version>
+		<description>New upstream version</description>
+		<description>Use %%{buildroot} exclusively</description>
+		<description>Add requirements for pre, post, preun and postun</description>
+		<description>Remove disttags from changelog</description>
+		<description>Remove extra defattr</description>
+	</change>
+        <change>
+		<date>Sun Jan 11 2009</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.8-1</version>
+		<description>Initial package for Fedora</description>
+	</change>
+</changelog>
+
+</project>

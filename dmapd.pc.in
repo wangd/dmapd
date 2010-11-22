@@ -1,0 +1,14 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+datadir=@datadir@
+moduledir=@libdir@/dmapd/@VERSION@/modules
+
+Name: dmapd
+Description: A media server
+Version: @VERSION@
+Requires: glib-2.0 gthread-2.0 gobject-2.0 libdmapsharing-1.9
+Requires.private: gmodule-no-export-2.0
+Libs: -L${libdir} -ldmapd
+Cflags: -I${includedir}/dmapd-@DMAPD_MAJORMINOR@
