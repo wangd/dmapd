@@ -1,6 +1,6 @@
 Copyright (C) 2003 W. Michael Petullo <mike@flyn.org>
 
-dmapd is A server that provides DAAP and DPAP shares
+dmapd is Serve DAAP (iTunes) and DPAP (iPhoto) shares from Linux
 
 = OVERVIEW =================================================================
 	
@@ -22,6 +22,11 @@ of DMAP sharing with the following features:
  o Caching of photograph thumbnails to avoid regenerating them each time 
  the server restarts
 
+Dmapd runs on Linux and other POSIX operating systems. It has been 
+used on OpenWrt Linux-based systems with as little as 32MB of memory 
+to serve music, video and photograph libraries containing thousands of 
+files.
+
 = BUILDING =================================================================
 
 To build, cross your fingers and try...
@@ -35,8 +40,8 @@ this program.
 	
 = NASTY DETAILS ============================================================
 	
-Any client that supports DAAP or DPAP may play media made available 
-by dmapd. This includes the following software clients and hardware devices:
+Dmapd can provide content to any client that supports DAAP or DPAP. 
+This includes the following software clients and hardware devices:
 
  o Apple iTunes
 
@@ -57,15 +62,20 @@ wish to use this feature:
 
  o typefindfunctions
 
-The following plugins are required for the corresponding media types:
+The following GStreamer plugins are required for the corresponding 
+media types:
 
  o mad (MP3)
 
  o id3demux (MP3)
 
- o ogg (Ogg vorbis, etc.)
+ o ogg (Ogg Vorbis, etc.)
 
- o vorbis (Ogg vorbis)
+ o vorbis (Ogg Vorbis)
 
  o flac (FLAC)
+
+ o mpeg2dec (MPEG video)
+
+ o theora (Ogg Theora video)
 

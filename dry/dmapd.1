@@ -1,0 +1,86 @@
+.TH dmapd 8
+.SH NAME
+.PP
+dmapd \- Serve DAAP (iTunes) and DPAP (iPhoto) shares from Linux
+.SH SYNOPSIS
+.PP
+.B dmapd [options]
+.SH OVERVIEW
+.PP
+
+The dmapd project provides a GObject-based, Open Source implementation
+of DMAP sharing with the following features:
+
+ o Support for both DAAP and DPAP
+
+ o Support for realtime transcoding of media formats not natively 
+ supported by clients
+
+ o Support for many metadata formats, such as those associated with Ogg 
+ Vorbis and MP3 (e.g., ID3)
+
+ o Detection of video streams so that clients may play them as video
+
+ o Use of GStreamer to support a wide range of audio and video CODECs
+
+ o Caching of photograph thumbnails to avoid regenerating them each time 
+ the server restarts
+
+.PP
+
+Dmapd runs on Linux and other POSIX operating systems. It has been used
+on OpenWrt Linux-based systems with as little as 32MB of memory to serve
+music, video and photograph libraries containing thousands of files.
+
+.SH DETAILS
+.PP
+
+Dmapd can provide content to any client that supports DAAP or DPAP. This
+includes the following software clients and hardware devices:
+
+
+ o Apple iTunes
+
+ o Apple iPhoto
+
+ o Rhythmbox
+
+ o Roku SoundBridge
+
+.PP
+
+Dmapd can read metadata from any music file supported by GStreamer. In order
+to use this feature you must have the appropriate GStreamer plugins
+installed. The following plugins are always required if you wish to use
+this feature:
+
+
+ o app
+
+ o decodebin
+
+ o typefindfunctions
+
+.PP
+
+The following GStreamer plugins are required for the corresponding
+media types:
+
+
+ o mad (MP3)
+
+ o id3demux (MP3)
+
+ o ogg (Ogg Vorbis, etc.)
+
+ o vorbis (Ogg Vorbis)
+
+ o flac (FLAC)
+
+ o mpeg2dec (MPEG video)
+
+ o theora (Ogg Theora video)
+
+.SH AUTHORS
+.PP
+W. Michael Petullo <mike@flyn.org>

@@ -1,8 +1,9 @@
 <project>
 	<name>dmapd</name>
+	<keywords>linux dmap daap dpap iPhoto</keywords>
 	<mansect>8</mansect>
 	<copyright>GPLv2+</copyright>
-	<one-liner>A server that provides DAAP and DPAP shares</one-liner>
+	<one-liner>Serve DAAP (iTunes) and DPAP (iPhoto) shares from Linux</one-liner>
 	<synopsis>[options]</synopsis>
 	<url>http://www.flyn.org/projects/dmapd/</url>
 	<maintainer>W. Michael Petullo &lt;mike@flyn.org&gt;</maintainer>
@@ -36,18 +37,23 @@ of DMAP sharing with the following features:
 	<listitem>Use of GStreamer to support a wide range of audio and video CODECs</listitem>
 	<listitem>Caching of photograph thumbnails to avoid regenerating them each time the server restarts</listitem>
 </itemizedlist>
+<para>
+Dmapd runs on Linux and other POSIX operating systems. It has been used
+on OpenWrt Linux-based systems with as little as 32MB of memory to serve
+music, video and photograph libraries containing thousands of files.
+</para>
 </overview>
 
 <nasty-details>
 <para>
-Any client that supports DAAP or DPAP may play media made available
-by dmapd. This includes the following software clients and hardware devices:
+Dmapd can provide content to any client that supports DAAP or DPAP. This
+includes the following software clients and hardware devices:
 
 </para>
 <itemizedlist>
-	<listitem>Apple iTunes<trade/></listitem>
-	<listitem>Apple iPhoto<trade/></listitem>
-	<listitem>Rhythmbox</listitem>
+	<listitem>Apple <ulink url="http://www.apple.com/itunes/">iTunes</ulink><trade/></listitem>
+	<listitem>Apple <ulink url="http://www.apple.com/ilife/iphoto/">iPhoto</ulink><trade/></listitem>
+	<listitem><ulink url="http://projects.gnome.org/rhythmbox/">Rhythmbox</ulink></listitem>
 	<listitem>Roku SoundBridge<trade/></listitem>
 </itemizedlist>
 
@@ -66,16 +72,19 @@ this feature:
 </itemizedlist>
 
 <para>
-The following plugins are required for the corresponding media types:
+The following GStreamer plugins are required for the corresponding
+media types:
 
 </para>
 
 <itemizedlist>
 	<listitem>mad (MP3)</listitem>
 	<listitem>id3demux (MP3)</listitem>
-	<listitem>ogg (Ogg vorbis, etc.)</listitem>
-	<listitem>vorbis (Ogg vorbis)</listitem>
+	<listitem>ogg (Ogg Vorbis, etc.)</listitem>
+	<listitem>vorbis (Ogg Vorbis)</listitem>
 	<listitem>flac (FLAC)</listitem>
+	<listitem>mpeg2dec (MPEG video)</listitem>
+	<listitem>theora (Ogg Theora video)</listitem>
 </itemizedlist>
 </nasty-details>
 
@@ -182,6 +191,13 @@ needed for developing modules using dmapd's API.
 </package>
 
 <changelog>
+	<change>
+		<date>Sun Nov 28 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
+		<version>0.0.33-1</version>
+		<description>New upstream version</description>
+	</change>
 	<change>
 		<date>Mon Nov 01 2010</date>
 		<author>W. Michael Petullo</author>
