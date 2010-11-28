@@ -182,7 +182,8 @@ dnl Check for inotify, used for media directory monitoring
 AC_CHECK_HEADERS([sys/inotify.h])
 
 dnl Check for Berkeley Database
-AC_CHECK_LIB(db-4.8, db_create, HAVE_LIBDB_4_8=yes, HAVE_LIBDB_4_8=no)
+# NOTE: AC_CHECK_LIB(db-4.8, ... passed even when headers not installed:
+AC_CHECK_HEADER(db.h, HAVE_LIBDB_4_8=yes, HAVE_LIBDB_4_8=no)
 AM_CONDITIONAL(USE_LIBDB_4_8, test x"$HAVE_LIBDB_4_8" = "xyes")
 
 AM_CONDITIONAL(FLYN, test "$FLYN")
