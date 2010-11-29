@@ -195,6 +195,13 @@ needed for developing modules using dmapd's API.
 		<date>Sun Nov 28 2010</date>
 		<author>W. Michael Petullo</author>
 		<email>mike[@]flyn.org</email>
+		<version>0.0.34-1</version>
+		<description>New upstream version</description>
+	</change>
+	<change>
+		<date>Sun Nov 28 2010</date>
+		<author>W. Michael Petullo</author>
+		<email>mike[@]flyn.org</email>
 		<version>0.0.33-1</version>
 		<description>New upstream version</description>
 	</change>
