@@ -1,3 +1,14 @@
+*** Grab exif thumbnail if available and read all exif metadata
+	See jhead-2.90
+	See libexif/exif-tag.c:ExifTagTable for string tag names
+	"Make" = camera make, "Canon" in "2007 Summer/StellaCar2c5x7.jpg"
+	"UserComment" = comment
+	"JPEGInterchangeFormat" = The offset to the start byte (SOI) of JPEG compressed thumbnail data
+	"JPEGInterchangeFormatLength" = The number of bytes of JPEG compressed thumbnail data
+		NOTE, from jhead-2.90: 
+			ExifSection = FindSection(M_EXIF);
+			ThumbnailPointer = ExifSection->Data+ImageInfo.ThumbnailOffset+8;
+
 *** Should db_dir be in DmapdDMAPDb or DmapdDMAPGHashTableDb? Should get dup or static_str?
 
 *** Video playlist override audio playlists when both directories are listed in dmapd.conf

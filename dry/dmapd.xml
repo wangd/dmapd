@@ -1,6 +1,6 @@
 <project>
 	<name>dmapd</name>
-	<keywords>linux dmap daap dpap iPhoto</keywords>
+	<keywords>linux dmap daap dpap iPhoto iTunes server</keywords>
 	<mansect>8</mansect>
 	<copyright>GPLv2+</copyright>
 	<one-liner>Serve DAAP (iTunes) and DPAP (iPhoto) shares from Linux</one-liner>
@@ -26,8 +26,8 @@
 	</options>
 <overview>
 <para>
-The dmapd project provides a GObject-based, Open Source implementation
-of DMAP sharing with the following features:
+The dmapd project provides a GObject-based, Open Source DMAP server with
+the following features:
 </para>
 <itemizedlist>
 	<listitem>Support for both DAAP and DPAP</listitem>

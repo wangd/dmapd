@@ -341,6 +341,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 		g_object_set (record, "large-filesize", buf.st_size, NULL);
 	}
 
+	g_object_set (record, "filename", g_basename (path), NULL);
 	location = g_strdup_printf ("file://%s", path);
 	g_object_set (record, "location", location, NULL);
 	g_free (location);
@@ -368,15 +369,15 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	}
 
 	/* FIXME: crashes on golem:
-	if (im_meta_get_string (im, "comments", &comments) != -1) {
+	if (im_meta_get_string (im, "exif-User Comment", &comments) != -1) {
 		g_debug ("Found image comment");
 		g_object_set (record, "comments", comments, NULL);
 	}
+	Also, exif-Date and Time looks like "2007:10:05 00:20:26 (ASCII, 20 bytes)"
 	*/
 	/* FIXME: also read from meta-data: */
 	g_object_set (record, "creation-date", 1, NULL);
 	g_object_set (record, "rating", 5, NULL);
-	g_object_set (record, "filename", g_basename (path), NULL);
 
 	g_unlink(thumbpath);
 	g_free(thumbpath);
