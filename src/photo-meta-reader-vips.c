@@ -21,6 +21,7 @@
  */
 
 #include <math.h>
+#include <string.h>
 #include <vips/vips.h>
 
 #include "photo-meta-reader-vips.h"
@@ -241,14 +242,15 @@ shrink_factor( IMAGE *in, IMAGE *out )
 	return( 0 );
 }
 
-static char *
-thumbnail( IMAGE *in, VipsFormatClass *format)
+static int
+thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 {
 	gint fd;
 	IMAGE *out;
-	int result;
+	int multiscan;
 	gchar *thumbpath;
 	GError *error = NULL;
+	gboolean got_thumb = FALSE;
 
 	if( strcmp( VIPS_OBJECT_CLASS( format )->nickname, "jpeg" ) == 0 ) {
 		/* JPEGs get special treatment. libjpeg supports fast shrink-on-read,
@@ -257,6 +259,36 @@ thumbnail( IMAGE *in, VipsFormatClass *format)
 		 */
 		int shrink;
 		char buf[FILENAME_MAX];
+
+		if (im_header_get_typeof (in, "jpeg-thumbnail-data")) {
+			void *ptr;
+			if (im_meta_get_blob (in, "jpeg-thumbnail-data", &ptr, size)) {
+				g_warning ("Failed to read EXIF thumbnail %s: %s", in->filename, im_error_buffer ());
+				im_error_clear ();
+			} else {
+				*thumb = g_new (gchar, *size);
+
+				/* FIXME: leak or correct? */
+				memcpy (*thumb, ptr, *size);
+
+				g_debug ("Read EXIF thumbnail of size %ld", size);
+				got_thumb = TRUE;
+				goto _done_no_out;
+			}
+		}
+
+		if (im_header_get_typeof (in, "jpeg-multiscan")) {
+			if (im_header_int (in, "jpeg-multiscan", &multiscan)) {
+				g_warning ("Failed to determine if %s multiscan: %s", in->filename, im_error_buffer ());
+				im_error_clear ();
+				goto _done_no_out;
+			}
+			if (multiscan) {
+				g_warning ("Will not try to thumbnail multiscan JPEG at %s", in->filename);
+				goto _done_no_out;
+			}
+		}
+
 		shrink = calculate_shrink( in->Xsize, in->Ysize, NULL );
 
 		if( shrink > 8 )
@@ -272,11 +304,11 @@ thumbnail( IMAGE *in, VipsFormatClass *format)
 		g_debug ("Opening %s:%d", in->filename, shrink);
 		im_close( in );
 		if( !(in = im_open( buf, "r" )) )
-			return(NULL);
+			goto _done_no_out;
 	}
 
 	if( !(in = open_big_image( in)) )
-		return(NULL);
+		goto _done_no_out;
 
 	fd = g_file_open_tmp ("photo-meta-reader-vips-XXXXXX.jpg", &thumbpath, &error);
 	close (fd);
@@ -286,15 +318,28 @@ thumbnail( IMAGE *in, VipsFormatClass *format)
 	if( !(out = im_open( thumbpath , "w" )) ) {
 		im_close( in );
 		g_free(thumbpath);
-		return(NULL);
+		goto _done_no_out;
 	}
 
-	result = shrink_factor( in, out );
+	if (shrink_factor( in, out ) || ! g_file_get_contents (thumbpath, (gchar **) thumb, size, &error)) {
+		*size = 0;
+		*thumb = NULL;
+		g_warning ("Error reading generated thumbnail at %s", thumbpath);
+	} else {
+		g_debug ("Generated thumbnail");
+		got_thumb = TRUE;
+	}
 
+	g_unlink(thumbpath);
+	g_free(thumbpath);
+
+_done:
 	im_close( out );
+
+_done_no_out:
 	im_close( in );
 
-	return(! result ? thumbpath : NULL);
+	return got_thumb;
 }
 
 static gboolean
@@ -304,7 +349,6 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 {
 	IMAGE *im;
 	int x, y;
-	gchar *thumbpath;
 	gboolean fnval = FALSE;
 	VipsFormatClass *format;
 	GError *error = NULL;
@@ -312,21 +356,21 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	gchar *aspect_ratio_str;
 	gchar *location;
 	gchar *comments;
-	gchar *thumbnail_data;
-	gsize  thumbnail_size;
+	void *thumbnail_data = NULL;
+	gsize  thumbnail_size = 0;
 
 	g_debug ("Processing %s", path);
 
 	/* FIXME: valgrind possible leak */
 	if( !(format = vips_format_for_file( path)) ) {
 		g_warning ("Do not know how to handle %s", path);
-		goto _return;
+		goto _done_no_im;
 	}
 
 	/* This will just read in the header and is quick. */
 	if( !(im = im_open( path, "r" )) ) {
 		g_warning ("Could not open %s", path);
-		goto _return;
+		goto _done_no_im;
 	}
 
 	/* Get this here because it will be changed by thumbnailing process: */
@@ -355,36 +399,33 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	g_object_set (record, "aspect-ratio", aspect_ratio_str, NULL);
 	g_free (aspect_ratio_str);
 
-	if (! (thumbpath = thumbnail (im, format))) {
-		g_warning ("Unable to thumbnail %s: %s", path,
-			    im_error_buffer ());
-		im_error_clear ();
-		g_object_set (record, "filesize", 0, NULL);
-	} else {
-		if (! g_file_get_contents (thumbpath, &thumbnail_data, &thumbnail_size, &error)) {
-			g_error ("Error reading generated thumbnail at %s", thumbpath);
+	if (im_header_get_typeof (im, "exif-User Comment")) {
+		if (im_meta_get_string (im, "exit-User Comment", &comments)) {
+			g_warning ("Failed to read comments from %s: %s", im->filename, im_error_buffer ());
+			im_error_clear ();
+		} else {
+			/* FIXME: leak or correct? */
+			g_object_set (record, "comments", g_strdup (comments), NULL);
 		}
-		g_object_set (record, "filesize", thumbnail_size, NULL);
-		g_object_set (record, "thumbnail", thumbnail_data, NULL);
 	}
 
-	/* FIXME: crashes on golem:
-	if (im_meta_get_string (im, "exif-User Comment", &comments) != -1) {
-		g_debug ("Found image comment");
-		g_object_set (record, "comments", comments, NULL);
-	}
-	Also, exif-Date and Time looks like "2007:10:05 00:20:26 (ASCII, 20 bytes)"
-	*/
+	/* FIXME: Also, exif-Date and Time looks like "2007:10:05 00:20:26 (ASCII, 20 bytes)" */
 	/* FIXME: also read from meta-data: */
 	g_object_set (record, "creation-date", 1, NULL);
 	g_object_set (record, "rating", 5, NULL);
 
-	g_unlink(thumbpath);
-	g_free(thumbpath);
+	/* WARNING: this must be the last function that uses im, because thumbnail closes im: */
+	if (thumbnail (im, format, &thumbnail_data, &thumbnail_size)) {
+		g_object_set (record, "filesize", thumbnail_size, NULL);
+		g_object_set (record, "thumbnail", thumbnail_data, NULL);
+	} else {
+		g_object_set (record, "filesize", 0, NULL);
+	}
+
 
 	fnval = TRUE;
 
-_return:
+_done_no_im:
 	return fnval;
 }
 

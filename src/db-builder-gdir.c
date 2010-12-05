@@ -104,7 +104,9 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 					g_object_unref (record);
 				}
 			}
-			g_free (path);
+			/* FIXME: causes double free:
+			 * g_free (path);
+			 */
 		}
 		
 		g_dir_close (d);
