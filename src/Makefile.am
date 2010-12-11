@@ -18,15 +18,23 @@ AM_CFLAGS = \
 
 sbin_PROGRAMS = dmapd dmapd-test
 
+if HAVE_CHECK
+noinst_PROGRAMS = dmapd-test
+endif
+
 dmapd_SOURCES = \
 	dmapd.c
 
 dmapd_LDADD = libdmapd.la
 
+if HAVE_CHECK
 dmapd_test_SOURCES = \
-	dmapd-test.c
+	dmapd-test.c \
+	dmapd-test-daap-record-add-lookup.c
 
-dmapd_test_LDADD = libdmapd.la
+dmapd_test_LDADD = libdmapd.la @CHECK_LIBS@
+dmapd_test_INCLUDES = @CHECK_CFLAGS@
+endif
 
 lib_LTLIBRARIES = libdmapd.la
 
