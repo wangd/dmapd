@@ -249,9 +249,9 @@ dmapd_dmap_db_ghashtable_add_path (DMAPDb *db, const gchar *path)
 
 static void dmapd_dmap_ghashtable_interface_init (gpointer iface, gpointer data)
 {
-        DMAPDbInterface *dmap_db = iface;
+        DMAPDbIface *dmap_db = iface;
 
-	g_assert (G_TYPE_FROM_INTERFACE (dmap_db) == TYPE_DMAP_DB);
+	g_assert (G_TYPE_FROM_INTERFACE (dmap_db) == DMAP_TYPE_DB);
 
 	dmap_db->add = dmapd_dmap_db_ghashtable_add;
 	dmap_db->add_with_id = dmapd_dmap_db_ghashtable_add_with_id;
@@ -263,7 +263,7 @@ static void dmapd_dmap_ghashtable_interface_init (gpointer iface, gpointer data)
 }
 
 G_DEFINE_TYPE_WITH_CODE (DmapdDMAPDbGHashTable, dmapd_dmap_db_ghashtable, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (TYPE_DMAP_DB, dmapd_dmap_ghashtable_interface_init))
+                         G_IMPLEMENT_INTERFACE (DMAP_TYPE_DB, dmapd_dmap_ghashtable_interface_init))
 
 static GObject*
 dmapd_dmap_db_ghashtable_constructor (GType type, guint n_construct_params, GObjectConstructParam *construct_params)

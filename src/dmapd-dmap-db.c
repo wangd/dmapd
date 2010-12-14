@@ -144,9 +144,9 @@ static gint64 count (const DMAPDb *db)
 
 static void dmapd_dmap_db_interface_init (gpointer iface, gpointer data)
 {
-	DMAPDbInterface *dmap_db = iface;
+	DMAPDbIface *dmap_db = iface;
 
-	g_assert (G_TYPE_FROM_INTERFACE (dmap_db) == TYPE_DMAP_DB);
+	g_assert (G_TYPE_FROM_INTERFACE (dmap_db) == DMAP_TYPE_DB);
 
 	dmap_db->add = add;
 	dmap_db->add_with_id = add_with_id;
@@ -158,4 +158,4 @@ static void dmapd_dmap_db_interface_init (gpointer iface, gpointer data)
 }
 
 G_DEFINE_TYPE_WITH_CODE (DmapdDMAPDb, dmapd_dmap_db, G_TYPE_OBJECT, 
-			 G_IMPLEMENT_INTERFACE (TYPE_DMAP_DB, dmapd_dmap_db_interface_init))
+			 G_IMPLEMENT_INTERFACE (DMAP_TYPE_DB, dmapd_dmap_db_interface_init))

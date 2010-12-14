@@ -307,18 +307,18 @@ static void dmapd_dpap_record_class_init (DmapdDPAPRecordClass *klass)
 
 static void dmapd_dpap_record_dpap_iface_init (gpointer iface, gpointer data)
 {
-	DPAPRecordInterface *dpap_record = iface;
+	DPAPRecordIface *dpap_record = iface;
 
-	g_assert (G_TYPE_FROM_INTERFACE (dpap_record) == TYPE_DPAP_RECORD);
+	g_assert (G_TYPE_FROM_INTERFACE (dpap_record) == DPAP_TYPE_RECORD);
 
 	dpap_record->read = dmapd_dpap_record_read;
 }
 
 static void dmapd_dpap_record_dmap_iface_init (gpointer iface, gpointer data)
 {
-	DMAPRecordInterface *dmap_record = iface;
+	DMAPRecordIface *dmap_record = iface;
 
-	g_assert (G_TYPE_FROM_INTERFACE (dmap_record) == TYPE_DMAP_RECORD);
+	g_assert (G_TYPE_FROM_INTERFACE (dmap_record) == DMAP_TYPE_RECORD);
 
 	dmap_record->to_blob = dmapd_dpap_record_to_blob;
 	dmap_record->set_from_blob = dmapd_dpap_record_set_from_blob;
@@ -326,8 +326,8 @@ static void dmapd_dpap_record_dmap_iface_init (gpointer iface, gpointer data)
 
 
 G_DEFINE_TYPE_WITH_CODE (DmapdDPAPRecord, dmapd_dpap_record, G_TYPE_OBJECT, 
-			 G_IMPLEMENT_INTERFACE (TYPE_DPAP_RECORD, dmapd_dpap_record_dpap_iface_init)
-			 G_IMPLEMENT_INTERFACE (TYPE_DMAP_RECORD, dmapd_dpap_record_dmap_iface_init))
+			 G_IMPLEMENT_INTERFACE (DPAP_TYPE_RECORD, dmapd_dpap_record_dpap_iface_init)
+			 G_IMPLEMENT_INTERFACE (DMAP_TYPE_RECORD, dmapd_dpap_record_dmap_iface_init))
 
 static void
 dmapd_dpap_record_finalize (GObject *object)
