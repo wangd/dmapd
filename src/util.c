@@ -192,3 +192,25 @@ object_from_module (GType type, const gchar *module_name, const gchar *first_pro
 	return fnval;
 }
 
+gchar *
+cache_path (cache_type_t type, const gchar *db_dir, const gchar *imagepath)
+{
+        gchar *cachepath = NULL;
+        guchar hash[33] = { 0 };
+	
+	/* FIXME: this should really be based on the contents of the file,
+	 * not the filename.
+	 */
+	gchar *filename = strrchr (imagepath, '/') + 1;
+	g_assert (filename);
+
+        dmap_hash_generate (1, (const guchar*) filename, 2, hash, 0);
+
+	if (type == CACHE_TYPE_RECORD) {
+		cachepath = g_strdup_printf ("%s/%s.%s", db_dir, hash, "record");
+	} else if (type == CACHE_TYPE_TRANSCODED_DATA) {
+		cachepath = g_strdup_printf ("%s/%s.%s", db_dir, hash, "mp3");
+	}
+
+        return cachepath;
+}

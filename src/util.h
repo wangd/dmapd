@@ -26,6 +26,11 @@
 #include <glib.h>
 #include <glib-object.h>
 
+typedef enum {
+	CACHE_TYPE_RECORD,
+	CACHE_TYPE_TRANSCODED_DATA
+} cache_type_t;
+
 GByteArray *blob_add_atomic (GByteArray *blob,
 			     const guint8 *ptr,
 			     const size_t size);
@@ -43,5 +48,7 @@ void stringleton_unref (const gchar *str);
 void stringleton_deinit (void);
 
 GObject *object_from_module (GType type, const gchar *module_name, const gchar *first_property_name, ...);
+
+gchar *cache_path (cache_type_t type, const gchar *db_dir, const gchar *imagepath);
 
 #endif

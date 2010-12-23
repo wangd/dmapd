@@ -16,7 +16,7 @@ AM_CFLAGS = \
 	-DMODULEDIR=\"$(MODULEDIR)\" \
 	-DSYSCONFDIR=\"$(SYSCONFDIR)\"
 
-sbin_PROGRAMS = dmapd dmapd-test
+sbin_PROGRAMS = dmapd
 
 if HAVE_CHECK
 noinst_PROGRAMS = dmapd-test

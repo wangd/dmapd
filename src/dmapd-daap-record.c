@@ -245,6 +245,7 @@ GInputStream *dmapd_daap_record_read (DAAPRecord *record, GError **error)
 	GInputStream *fnval = NULL;
 
 	file = g_file_new_for_uri (DMAPD_DAAP_RECORD (record)->priv->location);
+	g_assert (file);
 	fnval = G_INPUT_STREAM (g_file_read (file, NULL, error));
 
 	return fnval;

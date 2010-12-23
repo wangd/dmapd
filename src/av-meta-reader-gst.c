@@ -279,7 +279,7 @@ pause_pipeline (GstElement *pipeline)
 static gboolean
 quit_mainloop (GMainLoop *loop)
 {
-	g_main_loop_quit (loop);
+	g_idle_add ((GSourceFunc) g_main_loop_quit, loop);
 
 	/* Run once. */
 	return FALSE;

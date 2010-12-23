@@ -141,7 +141,8 @@ load_cached_records (DMAPDb *db, const gchar *db_dir, DMAPRecordFactory *factory
 
 			while ((entry = g_dir_read_name (d))) {
 				gchar *path = g_strdup_printf ("%s/%s", db_dir, entry);
-				if (g_file_test (path, G_FILE_TEST_IS_REGULAR)) {
+				if (g_file_test (path, G_FILE_TEST_IS_REGULAR)
+				    && g_str_has_suffix (path, ".record")) {
 					GByteArray *blob = cache_read (path);
 					if (blob) {
 						g_debug ("Adding cache: %s", path);
@@ -167,18 +168,6 @@ dmapd_dmap_db_ghashtable_add_with_id (DMAPDb *db, DMAPRecord *record, guint id)
 	return id;
 }
 
-static gchar *
-cache_path (const gchar *db_dir, const gchar *imagepath)
-{
-        gchar *cachepath = NULL;
-        guchar hash[33] = { 0 };
-
-        dmap_hash_generate (1, (const guchar*) imagepath, 2, hash, 0);
-        cachepath = g_strdup_printf ("%s/%s", db_dir, hash);
-
-        return cachepath;
-}
-
 static void
 cache_store (const gchar *db_dir, const gchar *imagepath, GByteArray *blob)
 {
@@ -194,7 +183,7 @@ cache_store (const gchar *db_dir, const gchar *imagepath, GByteArray *blob)
                 g_warning ("%s is not a directory, will not cache", db_dir);
                 return;
         }
-        cachepath = cache_path (db_dir, imagepath);
+        cachepath = cache_path (CACHE_TYPE_RECORD, db_dir, imagepath);
         g_file_set_contents (cachepath,
 			    (gchar *) blob->data,
 			     blob->len,

@@ -177,18 +177,8 @@ dmapd_dmap_db_disk_count (const DMAPDb *db)
 	return g_hash_table_size (DMAPD_DMAP_DB_DISK (db)->priv->db);
 }
 
-static gchar *
-cache_path (const gchar *db_dir, const gchar *hash)
-{
-        gchar *cachepath = NULL;
-
-        cachepath = g_strdup_printf ("%s/%s", db_dir, hash);
-
-        return cachepath;
-}
-
 static void
-cache_store (const gchar *db_dir, const gchar *hash, GByteArray *blob)
+cache_store (const gchar *db_dir, const gchar *location, GByteArray *blob)
 {
         struct stat st;
         gchar *cachepath;
@@ -202,7 +192,7 @@ cache_store (const gchar *db_dir, const gchar *hash, GByteArray *blob)
                 g_warning ("%s is not a directory, will not cache", db_dir);
                 return;
         }
-        cachepath = cache_path (db_dir, hash);
+        cachepath = cache_path (CACHE_TYPE_RECORD, db_dir, location);
         g_file_set_contents (cachepath,
 			    (gchar *) blob->data,
 			     blob->len,
@@ -235,7 +225,7 @@ dmapd_dmap_db_disk_add_with_id (DMAPDb *db, DMAPRecord *record, guint id)
         dmap_hash_generate (1, (const guchar*) location, 2, hash, 0);
 
 	blob = dmap_record_to_blob (record);
-	cache_store (db_dir, hash, blob);
+	cache_store (db_dir, location, blob);
 	g_free (location);
 	g_byte_array_free (blob, TRUE);
 	g_hash_table_insert (DMAPD_DMAP_DB_DISK (db)->priv->db, GUINT_TO_POINTER (id), hash);

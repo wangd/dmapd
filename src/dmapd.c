@@ -73,9 +73,10 @@ static gchar *lockpath           = NULL;
 static gchar *pidpath            = NULL;
 static gchar *user               = NULL;
 static gchar *group              = NULL;
-static gboolean foreground       = 0;
+static gboolean foreground       = FALSE;
 static gchar *share_name         = NULL;
 static gchar *transcode_mimetype = NULL;
+static gboolean rt_transcode     = FALSE;
 static gchar *db_module          = NULL;
 static gchar *av_module          = NULL;
 static gchar *photo_module       = NULL;
@@ -116,7 +117,8 @@ static GOptionEntry entries[] = {
 	{ "db-dir", 'd', 0, G_OPTION_ARG_STRING, &db_dir, "Media database directory", NULL },
 	{ "user", 'u', 0, G_OPTION_ARG_STRING, &user, "User to run as", NULL },
 	{ "group", 'g', 0, G_OPTION_ARG_STRING, &group, "Group to run as", NULL },
-	{ "transcode-mimetype", 't', 0, G_OPTION_ARG_STRING, &transcode_mimetype, "Target MIME type for real-time transcoding", NULL },
+	{ "transcode-mimetype", 't', 0, G_OPTION_ARG_STRING, &transcode_mimetype, "Target MIME type for transcoding", NULL },
+	{ "rt-transcode", 'r', 0, G_OPTION_ARG_NONE, &rt_transcode, "Perform transcoding in real-time", NULL },
 	{ NULL }
 };
 
@@ -235,6 +237,123 @@ debug_null (const char *log_domain,
 {
 }
 
+/* FIXME: review this code */
+static void
+do_transcode (DAAPRecord *record, gchar *cachepath)
+{
+	GError *error = NULL;
+	GInputStream *stream = NULL;
+
+	GInputStream *t = daap_record_read (record, &error);
+	if (! t) {
+		gchar *location;
+		g_object_get (record, "location", &location, NULL);
+		g_warning ("Error opening %s", location);
+		return;
+	}
+	/* FIXME: make target format flexible: */
+	GInputStream *s = dmap_gst_input_stream_new ("audio/mp3", t);
+	if (! s) {
+		gchar *location;
+		g_object_get (record, "location", &location, NULL);
+		g_error ("Error opening %s", location);
+	}
+	stream = G_INPUT_STREAM (s);
+	if (error != NULL) {
+		g_warning ("Couldn't open record: %s.", error->message);
+		g_error_free (error);
+		goto _return_no_close;
+	}
+	gssize read_size;
+	gchar buf[BUFSIZ];
+
+	FILE *outfile = fopen (cachepath, "w");
+	if (outfile == NULL) {
+		 g_warning ("Error opening: %s", cachepath);
+		 goto _return_no_close;
+	}
+
+	/* FIXME: is there a glib function to do this? */
+	do {
+		read_size = g_input_stream_read (stream,
+						 buf,
+						 BUFSIZ,
+						 NULL,
+						&error);
+		if (read_size > 0) {
+			if (fwrite (buf, 1, read_size, outfile) != read_size) {
+				 g_warning ("Error writing transcoded data");
+				 goto _return;
+			}
+		} else if (error != NULL) {
+			g_warning ("Error transcoding: %s", error->message);
+			g_error_free (error);
+			goto _return;
+		}
+	} while (read_size > 0);
+_return:
+	g_input_stream_close (t, NULL, NULL); /* FIXME: should this be done in GGstMp3InputStream class? */
+	g_input_stream_close (stream, NULL, NULL);
+	fclose (outfile);
+_return_no_close:
+	return;
+}
+
+/* FIXME: get rid of real-format prop?
+/* FIXME: review this code */
+/* NOTE: This is here and not in the individual DMAPRecords because records
+ * have no knowlege of the database, db_dir, etc.
+ */
+static void
+transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
+{
+	gboolean has_video = FALSE;
+	gchar *location = NULL;
+	gchar *format = NULL;
+	gchar *cacheuri = NULL;
+	gchar *cachepath = NULL;
+
+	g_object_get (record,
+		     "location",
+		     &location,
+		      "format",
+		     &format,
+		     "has-video",
+		     &has_video,
+		      NULL);
+
+	if (! strcmp (format, "mp3")) {
+		g_debug ("Transcoding not necessary");
+		return;
+	}
+
+	if (has_video) {
+		g_debug ("Not transcoding video");
+		return;
+	}
+
+	g_assert (location);
+	g_assert (db_dir);
+	cachepath = cache_path (CACHE_TYPE_TRANSCODED_DATA, db_dir, location);
+
+	if (! g_file_test (cachepath, G_FILE_TEST_EXISTS)) {
+		/* FIXME: return value, not void: */
+		g_debug ("Transcoding to %s", cachepath);
+		do_transcode (record, cachepath);
+	} else {
+		g_debug ("Found transcoded data at %s", cachepath);
+	}
+
+	cacheuri = g_strconcat ("file://", cachepath, NULL);
+	g_object_set (record, "location", cacheuri, NULL);
+	g_free (cacheuri);
+	g_object_set (record, "format", "mp3", NULL);
+
+	g_free (cachepath);
+
+	return;
+}
+
 static void
 serve (protocol_id_t protocol,
        DMAPRecordFactory *factory,
@@ -256,6 +375,9 @@ serve (protocol_id_t protocol,
 	for (l = media_dirs; l; l = l->next) {
 		db_builder_build_db_starting_at (builder, l->data, db, container_db, NULL);
 	}
+
+	if (protocol == DAAP && transcode_mimetype && ! rt_transcode)
+		dmap_db_foreach (db, (GHFunc) transcode_cache, db_protocol_dir);
 
 	loop = g_main_loop_new (NULL, FALSE);
 	share = create_share (protocol, DMAP_DB (db), DMAP_CONTAINER_DB (container_db));
@@ -283,11 +405,12 @@ read_keyfile (void)
 		g_debug ("Could not read configuration file %s: %s", CONFFILE, error->message);
 	} else {
 
-		db_dir             = g_key_file_get_string (keyfile, "General", "Database-Dir", NULL);
-		share_name         = g_key_file_get_string (keyfile, "General", "Share-Name", NULL);
-		user               = g_key_file_get_string (keyfile, "General", "User", NULL);
-		group              = g_key_file_get_string (keyfile, "General", "Group", NULL);
-		transcode_mimetype = g_key_file_get_string (keyfile, "Music", "Transcode-Mimetype", NULL);
+		db_dir             = g_key_file_get_string  (keyfile, "General", "Database-Dir", NULL);
+		share_name         = g_key_file_get_string  (keyfile, "General", "Share-Name", NULL);
+		user               = g_key_file_get_string  (keyfile, "General", "User", NULL);
+		group              = g_key_file_get_string  (keyfile, "General", "Group", NULL);
+		transcode_mimetype = g_key_file_get_string  (keyfile, "Music", "Transcode-Mimetype", NULL);
+		rt_transcode       = g_key_file_get_boolean (keyfile, "Music", "Realtime-Transcode", NULL);
 
 		dir = g_key_file_get_string_list (keyfile, "Music", "Dirs", &len, NULL);
 		for (i = 0; i < len; i++)

@@ -93,9 +93,9 @@ dmapd_dmap_container_db_class_init (DmapdDMAPContainerDbClass *klass)
 static void
 dmapd_dmap_container_db_interface_init (gpointer iface, gpointer data)
 {
-	DMAPContainerDbInterface *dmap_container_db = iface;
+	DMAPContainerDbIface *dmap_container_db = iface;
 
-	g_assert (G_TYPE_FROM_INTERFACE (dmap_container_db) == TYPE_DMAP_CONTAINER_DB);
+	g_assert (G_TYPE_FROM_INTERFACE (dmap_container_db) == DMAP_TYPE_CONTAINER_DB);
 
 	dmap_container_db->lookup_by_id = dmapd_dmap_container_db_lookup_by_id;
 	dmap_container_db->foreach = dmapd_dmap_container_db_foreach;
@@ -103,7 +103,7 @@ dmapd_dmap_container_db_interface_init (gpointer iface, gpointer data)
 }
 
 G_DEFINE_TYPE_WITH_CODE (DmapdDMAPContainerDb, dmapd_dmap_container_db, G_TYPE_OBJECT, 
-			 G_IMPLEMENT_INTERFACE (TYPE_DMAP_CONTAINER_DB,
+			 G_IMPLEMENT_INTERFACE (DMAP_TYPE_CONTAINER_DB,
 						dmapd_dmap_container_db_interface_init))
 
 DmapdDMAPContainerDb *
