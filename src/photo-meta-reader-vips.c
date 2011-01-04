@@ -27,7 +27,6 @@
 #include "photo-meta-reader-vips.h"
 #include "dmapd-dpap-record.h"
 
-const int USE_DISC_THRESHOLD = 1024 * 64;
 const int THUMBNAIL_SIZE = 128;
 
 /*
@@ -60,59 +59,6 @@ photo_meta_reader_vips_get_option_group (PhotoMetaReader *reader)
         return im_get_option_group ();
 }
 
-
-/* Open an image, using a disc temporary for 'large' images.
- */
-static IMAGE *
-open_big_image(IMAGE *im)
-{
-	IMAGE *disc = NULL;
-	size_t size;
-	char *original_path = g_strdup (im->filename);
-
-	VipsFormatClass *format;
-
-	/* Estimate decompressed image size.
-	 */
-	size = IM_IMAGE_SIZEOF_LINE( im ) * im->Ysize;
-
-	/* If it's less than USE_DISC_THRESHOLD, we can just use 'im'. This will
-	 * decompress to memory.
-	 */
-	if( size < USE_DISC_THRESHOLD ) {
-		g_debug ("Size %d < %d, creating thumbnail in memory", size, USE_DISC_THRESHOLD);
-		disc = im;
-		goto _return;
-	}
-
-	/* Nope, too big, we need to decompress to disc and return the disc
-	 * file.
-	 */
-	im_close( im );
-
-	/* This makes a disc temp which be unlinked automatically when the
-	 * image is closed. The temp is made in "/tmp", or "$TMPDIR/", if the
-	 * environment variable is set.
-	 */
-	if( !(disc = im__open_temp( "%s.v" )) ) 
-		goto _return;
-
-	/* Find a decompress class and use it to load the image.
-	 */
-	g_debug ("Decompressing %s to disk", original_path);
-	/* FIXME: runs out of memory here when running on small system: */
-	if( !(format = vips_format_for_file( original_path)) || 
-                format->load( original_path, disc ) ) {
-		im_close( disc );
-		disc = NULL;
-		goto _return;
-	}
-_return:
-	g_free (original_path);
-
-	g_debug ("Image decompression complete");
-	return( disc );
-}
 
 /* Calculate the shrink factors. 
  *
@@ -271,7 +217,7 @@ thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 				/* FIXME: leak or correct? */
 				memcpy (*thumb, ptr, *size);
 
-				g_debug ("Read EXIF thumbnail of size %ld", size);
+				g_debug ("Read EXIF thumbnail of size %lu", *size);
 				got_thumb = TRUE;
 				goto _done_no_out;
 			}
@@ -303,18 +249,14 @@ thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 		im_snprintf( buf, FILENAME_MAX, "%s:%d", in->filename, shrink );
 		g_debug ("Opening %s:%d", in->filename, shrink);
 		im_close( in );
-		if( !(in = im_open( buf, "r" )) )
+		if( !(in = im_open( buf, "rd" )) )
 			goto _done_no_out;
 	}
 
-	if( !(in = open_big_image( in)) )
-		goto _done_no_out;
-
-	fd = g_file_open_tmp ("photo-meta-reader-vips-XXXXXX.jpg", &thumbpath, &error);
-	close (fd);
-	if (fd == -1) {
+	if ((fd = g_file_open_tmp ("photo-meta-reader-vips-XXXXXX.jpg", &thumbpath, &error)) == -1) {
 		g_error ("Unable to open temporary file for thumbnail: %s", error->message);
 	}
+	close (fd);
 	if( !(out = im_open( thumbpath , "w" )) ) {
 		im_close( in );
 		g_free(thumbpath);
@@ -367,8 +309,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 		goto _done_no_im;
 	}
 
-	/* This will just read in the header and is quick. */
-	if( !(im = im_open( path, "r" )) ) {
+	if( !(im = im_open( path, "rd" )) ) {
 		g_warning ("Could not open %s", path);
 		goto _done_no_im;
 	}
@@ -400,7 +341,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	g_free (aspect_ratio_str);
 
 	if (im_header_get_typeof (im, "exif-User Comment")) {
-		if (im_meta_get_string (im, "exit-User Comment", &comments)) {
+		if (im_meta_get_string (im, "exif-User Comment", &comments)) {
 			g_warning ("Failed to read comments from %s: %s", im->filename, im_error_buffer ());
 			im_error_clear ();
 		} else {
