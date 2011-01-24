@@ -70,8 +70,7 @@ enum {
 	PROP_MTIME,
 	PROP_DISC,
 	PROP_BITRATE,
-	PROP_HAS_VIDEO,
-	PROP_REAL_FORMAT
+	PROP_HAS_VIDEO
 };
 
 static void
@@ -139,10 +138,6 @@ dmapd_daap_record_set_property (GObject *object,
 			break;
 		case PROP_HAS_VIDEO:
 			record->priv->has_video = g_value_get_boolean (value);
-			break;
-		case PROP_REAL_FORMAT:
-			stringleton_unref (record->priv->real_format);
-			record->priv->real_format = stringleton_ref (g_value_get_string(value));
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object,
@@ -217,9 +212,6 @@ dmapd_daap_record_get_property (GObject *object,
 			break;
 		case PROP_HAS_VIDEO:
 			g_value_set_boolean (value, record->priv->has_video);
-			break;
-		case PROP_REAL_FORMAT:
-			g_value_set_static_string (value, record->priv->real_format);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object,
@@ -321,9 +313,6 @@ dmapd_daap_record_set_from_blob (DMAPRecord *_record, GByteArray *blob)
 	g_object_set (record, "format", (char *) ptr, NULL);
         ptr += strlen ((char *) ptr) + 1;
 
-	g_object_set (record, "real-format", (char *) ptr, NULL);
-        ptr += strlen ((char *) ptr) + 1;
-
 	g_object_set (record, "title", (char *) ptr, NULL);
         ptr += strlen ((char *) ptr) + 1;
 
@@ -405,13 +394,6 @@ static void dmapd_daap_record_class_init (DmapdDAAPRecordClass *klass)
 	g_object_class_override_property (gobject_class, PROP_BITRATE, "bitrate");
 	g_object_class_override_property (gobject_class, PROP_HAS_VIDEO, "has-video");
 	g_object_class_override_property (gobject_class, PROP_MEDIAKIND, "mediakind");
-
-	g_object_class_install_property (gobject_class, PROP_REAL_FORMAT,
-	                        g_param_spec_string ("real-format",
-			     "Real format of song data",
-			     "Real format of song data",
-			       NULL,
-			    G_PARAM_READWRITE));
 }
 
 static void dmapd_daap_record_daap_iface_init (gpointer iface, gpointer data)

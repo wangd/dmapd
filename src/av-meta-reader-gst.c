@@ -167,10 +167,6 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 			g_object_set (record, "songgenre", val, NULL);
 		} else if (! strcmp ("audio-codec", tag)) {
 			gboolean has_video;
-			g_object_set (record, "real-format", determine_format (record, val), NULL);
-			/* Determine the format to "advertise" (i.e., used for 
-			 * URL path)
-			 */
 			g_object_get (record, "has-video", &has_video, NULL);
 			g_debug ("%s video", has_video ? "Has" : "Does not have");
 			if (has_video) {

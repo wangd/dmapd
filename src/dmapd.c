@@ -237,32 +237,28 @@ debug_null (const char *log_domain,
 {
 }
 
-/* FIXME: review this code */
 static void
 do_transcode (DAAPRecord *record, gchar *cachepath)
 {
 	GError *error = NULL;
-	GInputStream *stream = NULL;
-
-	GInputStream *t = daap_record_read (record, &error);
-	if (! t) {
+	GInputStream *stream, *decoded_stream;
+	
+	stream = daap_record_read (record, &error);
+	if (! stream) {
+		gchar *location = NULL;
+		g_object_get (record, "location", &location, NULL);
+		g_warning ("Error opening %s: %s", location, error->message);
+		g_error_free (error);
+		goto _return_no_close;
+	}
+	/* FIXME: make target format flexible: */
+	decoded_stream = dmap_gst_input_stream_new ("audio/mp3", stream);
+	if (! decoded_stream) {
 		gchar *location;
 		g_object_get (record, "location", &location, NULL);
 		g_warning ("Error opening %s", location);
-		return;
-	}
-	/* FIXME: make target format flexible: */
-	GInputStream *s = dmap_gst_input_stream_new ("audio/mp3", t);
-	if (! s) {
-		gchar *location;
-		g_object_get (record, "location", &location, NULL);
-		g_error ("Error opening %s", location);
-	}
-	stream = G_INPUT_STREAM (s);
-	if (error != NULL) {
-		g_warning ("Couldn't open record: %s.", error->message);
 		g_error_free (error);
-		goto _return_no_close;
+		goto _return_no_close_decoded_stream;
 	}
 	gssize read_size;
 	gchar buf[BUFSIZ];
@@ -270,12 +266,12 @@ do_transcode (DAAPRecord *record, gchar *cachepath)
 	FILE *outfile = fopen (cachepath, "w");
 	if (outfile == NULL) {
 		 g_warning ("Error opening: %s", cachepath);
-		 goto _return_no_close;
+		 goto _return_no_close_outfile;
 	}
 
 	/* FIXME: is there a glib function to do this? */
 	do {
-		read_size = g_input_stream_read (stream,
+		read_size = g_input_stream_read (decoded_stream,
 						 buf,
 						 BUFSIZ,
 						 NULL,
@@ -291,16 +287,17 @@ do_transcode (DAAPRecord *record, gchar *cachepath)
 			goto _return;
 		}
 	} while (read_size > 0);
+
 _return:
-	g_input_stream_close (t, NULL, NULL); /* FIXME: should this be done in GGstMp3InputStream class? */
-	g_input_stream_close (stream, NULL, NULL);
 	fclose (outfile);
+_return_no_close_outfile:
+	g_input_stream_close (decoded_stream, NULL, NULL);
+_return_no_close_decoded_stream:
+	g_input_stream_close (stream, NULL, NULL); /* FIXME: should this be done in GGstMp3InputStream class? */
 _return_no_close:
 	return;
 }
 
-/* FIXME: get rid of real-format prop?
-/* FIXME: review this code */
 /* NOTE: This is here and not in the individual DMAPRecords because records
  * have no knowlege of the database, db_dir, etc.
  */
@@ -322,6 +319,12 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 		     &has_video,
 		      NULL);
 
+	if (! (location && format && cacheuri && cachepath)) {
+		g_warning ("Error reading record properties for transcoding");
+		return;
+	}
+
+	/* FIXME: make target format flexible: */
 	if (! strcmp (format, "mp3")) {
 		g_debug ("Transcoding not necessary");
 		return;
@@ -332,7 +335,6 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 		return;
 	}
 
-	g_assert (location);
 	g_assert (db_dir);
 	cachepath = cache_path (CACHE_TYPE_TRANSCODED_DATA, db_dir, location);
 
@@ -344,9 +346,11 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 		g_debug ("Found transcoded data at %s", cachepath);
 	}
 
+	/* Replace previous location with URI to transcoded file. */
 	cacheuri = g_strconcat ("file://", cachepath, NULL);
 	g_object_set (record, "location", cacheuri, NULL);
 	g_free (cacheuri);
+	/* FIXME: make target format flexible: */
 	g_object_set (record, "format", "mp3", NULL);
 
 	g_free (cachepath);
@@ -354,7 +358,7 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 	return;
 }
 
-static void
+static DMAPShare *
 serve (protocol_id_t protocol,
        DMAPRecordFactory *factory,
        GSList *media_dirs)
@@ -382,12 +386,14 @@ serve (protocol_id_t protocol,
 	loop = g_main_loop_new (NULL, FALSE);
 	share = create_share (protocol, DMAP_DB (db), DMAP_CONTAINER_DB (container_db));
 
-	// FIXME: move, now that g_main_loop_run is common to DAAP and DPAP:
-	// g_object_unref (db);
-	// g_object_unref (container_db);
-	// g_object_unref (share);
-	// g_object_unref (builder);
+	/* FIXME:
+	g_object_unref (db);
+	g_object_unref (container_db);
+	g_object_unref (builder);
+	*/
 	g_free (db_protocol_dir);
+
+	return share;
 }
 
 static void
@@ -440,6 +446,8 @@ int main (int argc, char *argv[])
 	GOptionContext *context;
 	AVMetaReader *av_meta_reader = NULL;
 	PhotoMetaReader *photo_meta_reader = NULL;
+
+	DMAPShare *share[2] = { NULL, NULL };
 
 	g_type_init ();
 	g_thread_init (NULL);
@@ -508,7 +516,7 @@ int main (int argc, char *argv[])
 					"meta-reader",
 					av_meta_reader,
 					NULL));
-		serve (DAAP, factory, music_dirs);
+		share[DAAP] = serve (DAAP, factory, music_dirs);
 #else
 		g_error ("DAAP support not present");
 #endif
@@ -525,7 +533,7 @@ int main (int argc, char *argv[])
 					"meta-reader",
 					photo_meta_reader,
 					NULL));
-		serve (DPAP, factory, picture_dirs);
+		share[DPAP] = serve (DPAP, factory, picture_dirs);
 #else
 		g_error ("DPAP support not present");
 #endif
@@ -533,9 +541,15 @@ int main (int argc, char *argv[])
 
 	g_main_loop_run (loop);
 
-	if (av_meta_reader != NULL)
+	if (share[DAAP])
+		g_object_unref (share[DAAP]);
+
+	if (share[DPAP])
+		g_object_unref (share[DPAP]);
+
+	if (av_meta_reader)
 		g_object_unref (av_meta_reader);
-	if (photo_meta_reader != NULL)
+	if (photo_meta_reader)
 		g_object_unref (photo_meta_reader);
 
 	free_globals ();

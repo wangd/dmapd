@@ -25,14 +25,12 @@
 #include "photo-meta-reader.h"
 
 struct DmapdDPAPRecordPrivate {
-	gint filesize;
 	gint largefilesize;
 	gint creationdate;
 	gint rating;
 	char *location;
 	char *filename;
-	size_t thumbnail_size;
-	unsigned char *thumbnail;
+	GByteArray *thumbnail;
 	const char *aspectratio;
 	gint height;
 	gint width;
@@ -42,7 +40,6 @@ struct DmapdDPAPRecordPrivate {
 
 enum {
 	PROP_0,
-	PROP_FILESIZE,
 	PROP_LARGE_FILESIZE,
 	PROP_CREATION_DATE,
 	PROP_RATING,
@@ -65,9 +62,6 @@ dmapd_dpap_record_set_property (GObject *object,
 	DmapdDPAPRecord *record = DMAPD_DPAP_RECORD (object);
 
 	switch (prop_id) {
-		case PROP_FILESIZE:
-			record->priv->thumbnail_size = g_value_get_int (value);
-			break;
 		case PROP_LARGE_FILESIZE:
 			record->priv->largefilesize = g_value_get_int (value);
 			break;
@@ -104,8 +98,10 @@ dmapd_dpap_record_set_property (GObject *object,
 			record->priv->comments = g_value_dup_string (value);
 			break;
 		case PROP_THUMBNAIL:
-			g_free (record->priv->thumbnail);
-			record->priv->thumbnail = g_value_get_pointer (value);
+			if (record->priv->thumbnail) {
+				g_byte_array_unref (record->priv->thumbnail);
+			}
+			record->priv->thumbnail = g_byte_array_ref (g_value_get_pointer (value));
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -123,9 +119,6 @@ dmapd_dpap_record_get_property (GObject *object,
 	DmapdDPAPRecord *record = DMAPD_DPAP_RECORD (object);
 
 	switch (prop_id) {
-		case PROP_FILESIZE:
-			g_value_set_int (value, record->priv->thumbnail_size);
-			break;
 		case PROP_LARGE_FILESIZE:
 			g_value_set_int (value, record->priv->largefilesize);
 			break;
@@ -191,8 +184,6 @@ dmapd_dpap_record_to_blob (DMAPRecord *record)
 
 	/* NOTE: do not store ID in the blob. */
 
-	blob_add_atomic (blob, (const guint8 *) &(priv->filesize),
-			 sizeof (priv->filesize));
 	blob_add_atomic (blob, (const guint8 *) &(priv->largefilesize),
 			 sizeof (priv->largefilesize));
 	blob_add_atomic (blob, (const guint8 *) &(priv->creationdate),
@@ -201,12 +192,12 @@ dmapd_dpap_record_to_blob (DMAPRecord *record)
 			 sizeof (priv->rating));
         blob_add_string (blob, priv->location);
         blob_add_string (blob, priv->filename);
-	blob_add_atomic (blob, (const guint8 *) &(priv->thumbnail_size),
-			 sizeof (priv->thumbnail_size));
+	blob_add_atomic (blob, (const guint8 *) &(priv->thumbnail->len),
+			 sizeof (priv->thumbnail->len));
 
 	g_byte_array_append (blob,
-			     DMAPD_DPAP_RECORD (record)->priv->thumbnail,
-			     DMAPD_DPAP_RECORD (record)->priv->thumbnail_size);
+			     DMAPD_DPAP_RECORD (record)->priv->thumbnail->data,
+			     DMAPD_DPAP_RECORD (record)->priv->thumbnail->len);
 
         blob_add_string (blob, priv->aspectratio);
 	blob_add_atomic (blob, (const guint8 *) &(priv->height),
@@ -222,11 +213,9 @@ dmapd_dpap_record_to_blob (DMAPRecord *record)
 DMAPRecord *
 dmapd_dpap_record_set_from_blob (DMAPRecord *_record, GByteArray *blob)
 {
+	guint size;
 	guint8 *ptr = blob->data;
 	DmapdDPAPRecord *record = DMAPD_DPAP_RECORD (_record);
-
-	g_object_set (record, "filesize", *((gint *) ptr), NULL);
-	ptr += sizeof (record->priv->filesize);
 
 	g_object_set (record, "large-filesize", *((gint *) ptr), NULL);
 	ptr += sizeof (record->priv->largefilesize);
@@ -244,16 +233,16 @@ dmapd_dpap_record_set_from_blob (DMAPRecord *_record, GByteArray *blob)
 	ptr += strlen ((char *) ptr) + 1;
 
 	/* FIXME: use g_object_set: */
-	record->priv->thumbnail_size = *((size_t *) ptr);
-	ptr += sizeof (record->priv->thumbnail_size);
+	size = *((guint *) ptr);
+	ptr += sizeof (size);
 
-	/* FIXME: use g_object_set: */
-	if (record->priv->thumbnail_size) {
-		record->priv->thumbnail = g_try_malloc(record->priv->thumbnail_size);
-		if (record->priv->thumbnail == NULL)
-			g_error("malloc() %s %s ", __FILE__, __FUNCTION__);
-		g_memmove(record->priv->thumbnail, ptr, record->priv->thumbnail_size);
-		ptr += record->priv->thumbnail_size;
+	/* FIXME: use g_object_set?: */
+	if (size) {
+		record->priv->thumbnail = g_byte_array_sized_new (size);
+		g_byte_array_append (record->priv->thumbnail, ptr, size);
+		ptr += size;
+	} else {
+		record->priv->thumbnail = NULL;
 	}
 
 	g_object_set (record, "aspect-ratio", (char *) ptr, NULL);
@@ -291,7 +280,6 @@ static void dmapd_dpap_record_class_init (DmapdDPAPRecordClass *klass)
 	gobject_class->get_property = dmapd_dpap_record_get_property;
 	gobject_class->finalize = dmapd_dpap_record_finalize;
 
-	g_object_class_override_property (gobject_class, PROP_FILESIZE, "filesize");
 	g_object_class_override_property (gobject_class, PROP_LARGE_FILESIZE, "large-filesize");
 	g_object_class_override_property (gobject_class, PROP_CREATION_DATE, "creation-date");
 	g_object_class_override_property (gobject_class, PROP_RATING, "rating");
@@ -342,7 +330,10 @@ dmapd_dpap_record_finalize (GObject *object)
 	g_free (record->priv->location);
 	g_free (record->priv->filename);
 	g_free (record->priv->comments);
-	g_free (record->priv->thumbnail);
+
+	if (record->priv->thumbnail) {
+		g_byte_array_unref (record->priv->thumbnail);
+	}
 
 	G_OBJECT_CLASS (dmapd_dpap_record_parent_class)->finalize (object);
 }
@@ -352,6 +343,9 @@ DmapdDPAPRecord *dmapd_dpap_record_new (const char *path, gpointer reader)
 	DmapdDPAPRecord *record;
 
 	record = DMAPD_DPAP_RECORD (g_object_new (TYPE_DMAPD_DPAP_RECORD, NULL));
+
+	/* FIXME: where can this go (what is default value for pointer props?) */
+	record->priv->thumbnail = NULL;
 
 	if (path) {
 		if (! photo_meta_reader_read (PHOTO_META_READER (reader), DPAP_RECORD (record), path)) {

@@ -115,6 +115,7 @@ photo_meta_reader_graphicsmagick_read (PhotoMetaReader *reader,
 					   LanczosFilter,
 					   1.0);
 		}
+		FIXME: port to new GByteArray use, see VIPS code
 		g_object_set (record, "thumbnail", MagickWriteImageBlob (wand, &size), NULL);
 		g_object_set (record, "filesize", size, NULL);
 		/* FIXME:

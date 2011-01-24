@@ -298,6 +298,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	gchar *aspect_ratio_str;
 	gchar *location;
 	gchar *comments;
+	GByteArray *thumbnail_array = NULL;
 	void *thumbnail_data = NULL;
 	gsize  thumbnail_size = 0;
 
@@ -357,12 +358,10 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 
 	/* WARNING: this must be the last function that uses im, because thumbnail closes im: */
 	if (thumbnail (im, format, &thumbnail_data, &thumbnail_size)) {
-		g_object_set (record, "filesize", thumbnail_size, NULL);
-		g_object_set (record, "thumbnail", thumbnail_data, NULL);
-	} else {
-		g_object_set (record, "filesize", 0, NULL);
+		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
+		g_byte_array_append (thumbnail_array, thumbnail_data, thumbnail_size);
 	}
-
+	g_object_set (record, "thumbnail", thumbnail_array, NULL);
 
 	fnval = TRUE;
 
