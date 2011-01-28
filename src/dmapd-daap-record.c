@@ -33,7 +33,6 @@ struct DmapdDAAPRecordPrivate {
 	guint64 filesize;
 	char *location;
 	const char *format;	 	/* Format, possibly after transcoding. */
-	const char *real_format;
 	gint mediakind;			/* FIXME: actually enum. */
 	char *title;
 	const char *album;
@@ -223,7 +222,7 @@ dmapd_daap_record_get_property (GObject *object,
 
 gboolean dmapd_daap_record_itunes_compat (DAAPRecord *record)
 {
-	const gchar *format = DMAPD_DAAP_RECORD (record)->priv->real_format;
+	const gchar *format = DMAPD_DAAP_RECORD (record)->priv->format;
 
 	if (! strcmp (format, "mp3"))
 		return TRUE;
@@ -260,7 +259,6 @@ dmapd_daap_record_to_blob (DMAPRecord *record)
 
 	g_assert (priv->location);
 	g_assert (priv->format);
-	g_assert (priv->real_format);
 	g_assert (priv->title);
 	g_assert (priv->album);
 	g_assert (priv->artist);
@@ -268,7 +266,6 @@ dmapd_daap_record_to_blob (DMAPRecord *record)
 
 	blob_add_string (blob, priv->location);
 	blob_add_string (blob, priv->format);
-	blob_add_string (blob, priv->real_format);
 	blob_add_string (blob, priv->title);
 	blob_add_string (blob, priv->album);
 	blob_add_string (blob, priv->artist);
@@ -435,7 +432,6 @@ dmapd_daap_record_finalize (GObject *object)
 	stringleton_unref (record->priv->album);
 	stringleton_unref (record->priv->artist);
 	stringleton_unref (record->priv->genre);
-	stringleton_unref (record->priv->real_format);
 
 	G_OBJECT_CLASS (dmapd_daap_record_parent_class)->finalize (object);
 }
@@ -468,7 +464,6 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, gpointer reader)
 		g_object_set (record, "songalbum",   unknown,  NULL);
 		g_object_set (record, "songgenre",   unknown,  NULL);
 		g_object_set (record, "format",      unknown,  NULL);
-		g_object_set (record, "real_format", unknown,  NULL);
 		g_object_set (record, "mediakind",   DMAP_MEDIA_KIND_MUSIC, NULL);
 
 		g_free (location);
