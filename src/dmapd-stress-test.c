@@ -100,7 +100,7 @@ connected_cb (DMAPConnection *connection,
 			   port);
 }
 
-static DMAPConnection *
+static void
 create_connection (const DMAPMdnsBrowserServiceType protocol,
 		   const char *name,
 		   const char *host,
@@ -130,8 +130,6 @@ create_connection (const DMAPMdnsBrowserServiceType protocol,
 		conn = DMAP_CONNECTION (dpap_connection_new (name, host, port, FALSE, db, factory));
 	}
 	dmap_connection_connect (DMAP_CONNECTION (conn), (DMAPConnectionCallback) connected_cb, db);
-
-	return conn;
 }
 
 static void
