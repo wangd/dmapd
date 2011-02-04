@@ -18,8 +18,10 @@ AM_CFLAGS = \
 
 sbin_PROGRAMS = dmapd
 
+noinst_PROGRAMS = dmapd-stress-test
+
 if HAVE_CHECK
-noinst_PROGRAMS = dmapd-test
+noinst_PROGRAMS += dmapd-unit-test
 endif
 
 dmapd_SOURCES = \
@@ -27,13 +29,18 @@ dmapd_SOURCES = \
 
 dmapd_LDADD = libdmapd.la
 
+dmapd_stress_test_SOURCES = \
+	dmapd-stress-test.c
+
+dmapd_stress_test_LDADD = libdmapd.la
+
 if HAVE_CHECK
-dmapd_test_SOURCES = \
-	dmapd-test.c \
+dmapd_unit_test_SOURCES = \
+	dmapd-unit-test.c \
 	dmapd-test-daap-record-add-lookup.c
 
-dmapd_test_LDADD = libdmapd.la @CHECK_LIBS@
-dmapd_test_INCLUDES = @CHECK_CFLAGS@
+dmapd_unit_test_LDADD = libdmapd.la @CHECK_LIBS@
+dmapd_unit_test_INCLUDES = @CHECK_CFLAGS@
 endif
 
 lib_LTLIBRARIES = libdmapd.la

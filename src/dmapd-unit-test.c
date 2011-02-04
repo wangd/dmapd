@@ -1,4 +1,4 @@
-/*   FILE: dmapd-test.c -- Unit tests
+/*   FILE: dmapd-unit-test.c -- Unit tests
  * AUTHOR: W. Michael Petullo <mike@flyn.org>
  *   DATE: 01 January 2009 
  *

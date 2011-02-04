@@ -2,17 +2,17 @@
 
 1. Unit tests
 
-2. 24-hour memory leak test, using test driver client
+2. 24-hour memory leak test, using stress test driver client
 
 	a. Run dmapd in GDB
 
-	b. Run test driver client for 24 hours
+	b. Run stress test driver client for 24 hours
 
 3. Valgrind using test driver client
 
 	a. Run dmapd in "valgrind --leak-check=full --num-callers=50"
 
-	b. Run test driver client for 5 minutes
+	b. Run stress test driver client for 5 minutes
 
 	c. Review results
 
@@ -29,3 +29,12 @@
 	e. git push
 
 	f. Publish tarball
+
+NOTE: stress test driver
+
+	1. Lists available shares
+
+	2. User chooses share
+
+	3. Iterates through all protocol requests, request each database
+	item and some invalid items

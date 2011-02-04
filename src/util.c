@@ -75,6 +75,8 @@ const gchar *stringleton_ref (const gchar *str)
 	gpointer key;
 	gpointer val;
 
+	g_assert (stringleton);
+
 	/* NOTE: insert will free passed str if the key already exists,
 	 * not existing key in hash table.
 	 */
@@ -99,6 +101,8 @@ const gchar *stringleton_ref (const gchar *str)
 void stringleton_unref (const gchar *str)
 {
 	guint count;
+
+	g_assert (stringleton);
 
 	if (str != NULL) {
 		count = GPOINTER_TO_UINT (g_hash_table_lookup (stringleton,
