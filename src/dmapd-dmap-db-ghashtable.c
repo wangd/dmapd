@@ -210,6 +210,7 @@ dmapd_dmap_db_ghashtable_add (DMAPDb *db, DMAPRecord *record)
 	if (db_dir != NULL)
 		cache_store (db_dir, location, blob);
 	g_free (location);
+	g_free (db_dir);
 	g_byte_array_free (blob, TRUE);
 
 	return dmapd_dmap_db_ghashtable_add_with_id (db, record, nextid--);
@@ -268,6 +269,7 @@ dmapd_dmap_db_ghashtable_constructor (GType type, guint n_construct_params, GObj
 	if (db_dir && factory) {
 		load_cached_records (DMAP_DB (object), db_dir, factory);
 	}
+	g_free (db_dir);
 
 	return object;
 }
