@@ -37,7 +37,7 @@ enum {
 
 static GMainLoop *loop;
 
-static DMAPConnection *
+static void
 create_connection (const DMAPMdnsBrowserServiceType protocol,
 		   const char *name,
 		   const char *host,
