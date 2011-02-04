@@ -8,7 +8,7 @@
 
 *** Dynamically adjust database when files are added to directories (inotify?). See "Kernel Korner - Intro to inotify"
 	
-*** Support playlists using totem-pl-parser.
+*** Support playlists using totem-pl-parser
 
 *** Fix seeking (see libdmapsharing TODO)
 

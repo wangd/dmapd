@@ -48,7 +48,7 @@ print_record (gpointer id, DMAPRecord *record, gpointer user_data)
 {
 	gchar *artist, *title;
 
-	/* FIXME: print all record properties; may need DAAP and DPAP version: */
+	/* FIXME: print all record properties; need DAAP and DPAP version: */
 	g_object_get (record,
 		     "songartist", &artist,
 		     "title",  &title,
@@ -97,7 +97,7 @@ connected_cb (DMAPConnection *connection,
 	g_object_unref (connection);
 
 	/* Create another connection to same service. */
-	create_connection (DMAP_MDNS_BROWSER_SERVICE_TYPE_DAAP,
+	create_connection (get_service_type (connection),
 			   name,
 			   host,
 			   port);
@@ -143,7 +143,6 @@ service_added_cb (DMAPMdnsBrowser *browser,
                   DMAPMdnsBrowserService *service,
                   gpointer user_data)
 {
-	DMAPConnection *conn;
 	char answer, newline;
 
 	fprintf (stdout,
