@@ -217,6 +217,7 @@ int main(int argc, char **argv)
 		exit (EXIT_FAILURE);
 	}
 
+	fprintf (stdout, "Waiting for DMAP shares; please run dmapd\n");
 	g_main_loop_run (loop);
 
 	exit (EXIT_SUCCESS);
