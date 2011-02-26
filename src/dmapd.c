@@ -472,7 +472,7 @@ int main (int argc, char *argv[])
 	db_module = getenv ("DMAPD_DB_MODULE");
 	db_module = db_module ? db_module : DEFAULT_DB_MOD;
 
-	context = g_option_context_new ("- serve media using DMAP");
+	context = g_option_context_new ("-m | -p: serve media using DMAP");
 	g_option_context_add_main_entries (context, entries, NULL);
 
 	if (strcmp (av_module, "null") != 0) {
@@ -495,6 +495,12 @@ int main (int argc, char *argv[])
 
 	if (! g_option_context_parse (context, &argc, &argv, &error)) {
 		g_error ("Option parsing failed: %s", error->message);
+	}
+
+	if (! (music_dirs || picture_dirs)) {
+		g_print ("%s", g_option_context_get_help (context, TRUE, NULL));
+		g_print ("Must provide '-m' or '-p' option\n");
+		exit(EXIT_FAILURE);
 	}
 
 	g_option_context_free (context);
