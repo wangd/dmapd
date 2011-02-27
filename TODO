@@ -1,7 +1,5 @@
 = Short term ===================================================================
 
-Noah: DNS-SD implementation
-
 Noah: write unit tests
 
 Mike: fix: video playlist override audio playlists when both directories
