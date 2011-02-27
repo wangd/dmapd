@@ -167,6 +167,7 @@ object_from_module (GType type, const gchar *module_name, const gchar *first_pro
 	if (! strcmp (module_name, "ghashtable")) {
 		g_debug ("Not loading built in DmapdDMAPDbGHashTable %s", g_type_name (TYPE_DMAPD_DMAP_DB_GHASHTABLE));
 		child_type = TYPE_DMAPD_DMAP_DB_GHASHTABLE;
+		fnval = g_object_new_valist (child_type, first_property_name, ap);
 	} else {
 		module_filename = g_strdup_printf (fmt, module_name);
 		module_path = g_module_build_path (MODULEDIR, module_filename);
@@ -179,8 +180,8 @@ object_from_module (GType type, const gchar *module_name, const gchar *first_pro
 			filters = g_type_children (type, &n_filters);
 			g_assert (n_filters == 1);
 			g_assert (g_type_is_a (filters[0], type));
-			child_type = filters[0];
 
+			child_type = filters[0];
 			fnval = g_object_new_valist (child_type, first_property_name, ap);
 		}
 
