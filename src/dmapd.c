@@ -206,7 +206,7 @@ daemonize (void)
 	fd = open (_lockpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 
 	if (lockf (fd, F_TLOCK, 0) < 0)
-		g_error ("Error opening lock file %s", _lockpath);
+		g_error ("Error opening lock file %s (does it already exist?)", _lockpath);
 	
 	_pidpath = pidpath ? pidpath : RUNDIR "/dmapd.pid";
 	fd = open (_pidpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
