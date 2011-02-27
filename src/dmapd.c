@@ -478,23 +478,47 @@ int main (int argc, char *argv[])
 	if (strcmp (av_module, "null") != 0) {
 		GOptionGroup *group;
 		av_meta_reader = AV_META_READER (object_from_module (TYPE_AV_META_READER, av_module, NULL));
-		group = av_meta_reader_get_option_group (av_meta_reader);
-		if (group)
-			g_option_context_add_group (context, group);
+		if (av_meta_reader) {
+			group = av_meta_reader_get_option_group (av_meta_reader);
+			if (group)
+				g_option_context_add_group (context, group);
+		}
 	}
 
 	if (strcmp (photo_module, "null") != 0) {
 		GOptionGroup *group;
 		photo_meta_reader = PHOTO_META_READER (object_from_module (TYPE_PHOTO_META_READER, photo_module, NULL));
-		group =  photo_meta_reader_get_option_group (photo_meta_reader);
-		if (group)
-			g_option_context_add_group (context, group);
+		if (photo_meta_reader) {
+			group = photo_meta_reader_get_option_group (photo_meta_reader);
+			if (group)
+				g_option_context_add_group (context, group);
+		}
 	}
 
 	read_keyfile ();
 
 	if (! g_option_context_parse (context, &argc, &argv, &error)) {
 		g_error ("Option parsing failed: %s", error->message);
+	}
+
+	if (! (av_meta_reader || photo_meta_reader)) {
+		g_error ("Neither an AV or photograph metadata reader plugin could be loaded");
+	}
+
+	if (! av_meta_reader) {
+		if (music_dirs) {
+			g_error ("Could not load any AV metadata reader plugin but music directory provided");
+		} else {
+			g_warning ("Could not load any AV metadata reader plugin");
+		}
+	}
+
+	if (! photo_meta_reader) {
+		if (picture_dirs) {
+			g_error ("Could not load any photograph metadata reader plugin but photograph directory provided");
+		} else {
+			g_warning ("Could not load any photograph metadata reader plugin");
+		}
 	}
 
 	if (! (music_dirs || picture_dirs)) {
@@ -511,7 +535,7 @@ int main (int argc, char *argv[])
 
 	signal (SIGTERM, sigterm_handler);
 
-	if (music_dirs) {
+	if (music_dirs && av_meta_reader) {
 #if WITH_DAAP
 		if (av_meta_reader == NULL)
 			g_error ("Music directory specified but AV metadata reader module is 'null'");
@@ -528,7 +552,7 @@ int main (int argc, char *argv[])
 #endif
 	}
 
-	if (picture_dirs) {
+	if (picture_dirs && photo_meta_reader) {
 #ifdef WITH_DPAP
 		if (photo_meta_reader == NULL)
 			g_error ("Photo directory specified but photo metadata reader module is 'null'");
