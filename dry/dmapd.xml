@@ -46,6 +46,84 @@ music, video and photograph libraries containing thousands of files.
 
 <nasty-details>
 <para>
+Dmapd supports the following command line options:
+</para>
+
+<variablelist>
+	<varlistentry>
+		<term>-?, --help</term>
+		<listitem>Show help options</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-f, --foreground</term>
+		<listitem>Do not fork; remain in foreground</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-n, --name</term>
+		<listitem>Name of media shares</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-m, --music-dir</term>
+		<listitem>Music directory</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-p, --picture-dir</term>
+		<listitem>Picture directory</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-l, --lockpath</term>
+		<listitem>Path to lockfile</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-i, --pidpath</term>
+		<listitem>Path to PID file</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-d, --db-dir</term>
+		<listitem>Media database directory</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-u, --user</term>
+		<listitem>User to run as</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-g, --group</term>
+		<listitem>Group to run as</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-t, --transcode-mime-type</term>
+		<listitem>Target MIME type for transcoding</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-r, --rt-transcode</term>
+		<listitem>Perform transcoding in real-time</listitem>
+	</varlistentry>
+</variablelist>
+
+<para>
+Dmapd supports the following environment variables:
+</para>
+
+<variablelist>
+	<varlistentry>
+		<term>DMAPD_DEBUG</term>
+		<listitem>Enable verbose debugging messages</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>DMAPD_AV_MODULE</term>
+		<listitem>Name of an alternate AV module</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>DMAPD_PHOTO_MODULE</term>
+		<listitem>Name of an alternate photograph module</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>DMAPD_DB_MODULE</term>
+		<listitem>Name of an alternate database module</listitem>
+	</varlistentry>
+</variablelist>
+
+<para>
 Dmapd can provide content to any client that supports DAAP or DPAP. This
 includes the following software clients and hardware devices:
 

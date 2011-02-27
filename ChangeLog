@@ -1,3 +1,247 @@
+commit f800147c2919f151df811e745dfb3db00ad15681
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sat Feb 26 20:31:45 2011 -0600
+
+    Bump version number
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 43d47049eb6318bada07e4172daabbcf377d99e5
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sat Feb 26 20:30:09 2011 -0600
+
+    Make lockfile error message a little more clear
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 1018ba7ba774df97576b1a0a252a44421e790428
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sat Feb 26 19:26:41 2011 -0600
+
+    Handle default DB plugin properly again
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 82b8e163f6ac3858c8fd08f3e2d522fb6630cd36
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sat Feb 26 19:24:42 2011 -0600
+
+    Handle missing plugins more gracefully
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit b1e8a18c0f25dfb1adfaed2047c91a48a89727e3
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sat Feb 26 17:28:26 2011 -0600
+
+    Print usage and quit if music and picture directory arguments not provided
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 6d30971c78793d8a6f11074790b54efd59cae672
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Fri Feb 25 12:41:03 2011 -0600
+
+    Two small fixes
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 75704c9814504a45d27e9a7da17a21a1a3ed248f
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Fri Feb 4 12:42:05 2011 -0600
+
+    Test new web-based Git feature
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 6c7df22ea7f1f705fdf227a6c5575f976c989fa1
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Fri Feb 4 09:20:02 2011 -0600
+
+    Get rid of some memory leaks identified by valgrind
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 5a70b0ecc87c4533b31d1de35582b26b5095eb5d
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Thu Feb 3 21:27:18 2011 -0600
+
+    Fix create_connection prototype
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit a0786843325eabdf379d5a3898311835a5e40e92
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Thu Feb 3 21:26:18 2011 -0600
+
+    Modify prototype of function to create connection
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 17396c67cde9b1ad144db717265fdd4b9ec1d966
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Thu Feb 3 21:24:51 2011 -0600
+
+    Add dmapd stress test utility
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 92c9f48efd54292e6b2d2c6d4de7a2fd9b9b60e4
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Thu Feb 3 09:20:25 2011 -0600
+
+    Add documentation of release protocol
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit ee6a2b6c040f3984c3e4296ea7f6765c09ca4605
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Fri Jan 28 17:28:11 2011 -0600
+
+    Bump version number
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit b37ccc27cf6a46773b66d8fc1b305ee9be2e2577
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Fri Jan 28 16:09:39 2011 -0600
+
+    Finish removing real_format from DmapdDAAPRecord
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 713b31f98d3b35aaa13a62cc7437b3f473d78bee
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Wed Jan 26 21:42:49 2011 -0600
+
+    Add Noah to AUTHORS
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 9e911bffd12709b7bc9b9d505e8a2ab4de374bc9
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Mon Jan 24 16:59:19 2011 -0600
+
+    Assorted updates
+    
+    Remove "real-format" property that is no longer used
+    Modify to use libdmapsharing's new GByteArray-based thumbnail
+    Update transcode code
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 3bdf4d6e96e8f49a8c768241037a620a86a2d274
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Mon Jan 3 22:20:50 2011 -0600
+
+    Uncomment free of path in db_builder_gdir_build_db_starting_at (), seems okay
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 5b96ad8baf5625c476f981f8e49c17672e50dc3f
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Mon Jan 3 21:58:01 2011 -0600
+
+    Require VIPS >= 7.24.1 for EXIF thumbnail and progressive JPEG detection
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 74f4f9859dee643d4cdef8969c9ddfb85037e1b9
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Mon Jan 3 21:54:22 2011 -0600
+
+    Use VIPS' new disc-based decompression instead coding it here
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 7135edee36e246f5a47f3d687a51ba56cd59ffc2
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Thu Dec 23 12:25:03 2010 -0600
+
+    Continue new libdmapsharing API work; allow non-realtime transcoding to database directory
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 29ee0fd4de21b09c5722a0015dbf99b1bacff2ca
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Tue Dec 14 10:08:42 2010 -0600
+
+    Start migrating to new, Vala-friendly libdmapsharing API
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 269b8928e736004c18c72f3f9149320f6b66d99c
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sat Dec 11 16:48:00 2010 -0600
+
+    Port unit tests to use check library
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 4865f03c5bd6983f360d0b597841f56604d07867
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sat Dec 4 21:49:10 2010 -0600
+
+    Add ability to read EXIF thumbnails to VIPS code (requires VIPS 7.24)
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 15dae21d3d8844204b245b4f5f687ccc5042cad9
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Fri Dec 3 09:17:44 2010 -0600
+
+    Update documentation and some metadata-related code in the VIPS plugin
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit e2e6d3dbd42a66b6793f3efdf65a54e2b00b2ed2
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sun Nov 28 20:32:22 2010 -0600
+
+    Bump version number
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 222de3b31c1e242f10124f4580f3825a1a750965
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sun Nov 28 20:30:45 2010 -0600
+
+    Check for both db.h and libdb-4.8
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 68153618dc837443c7327ae7721317d28a58027f
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sun Nov 28 17:42:33 2010 -0600
+
+    Bump version number
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 9594fa9912c890011a6d9622c0276a61cf14b1b7
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sun Nov 28 17:41:22 2010 -0600
+
+    Update autogen.sh
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 3ebbf8c4918f09e14f7fac576897566bc6db468b
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sun Nov 28 17:39:56 2010 -0600
+
+    Fix Berkeley DB check
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 72b94b769b41b734095b6e09727dc37576cf68ff
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Sun Nov 28 17:17:44 2010 -0600
+
+    Attempt to make basic documentation more clear
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 9ff7256d9e1318ce6fa36bb9e8e7706e81769401
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Tue Nov 23 11:02:56 2010 -0600
+
+    Bump version number
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit 499bc01d266d57970b7d2f7e04e8291d6e723dce
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Mon Nov 22 13:02:03 2010 -0600
+
+    Generate README
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit e2ddd81e940772b84f1a0924beec6c89c8e6426c
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Mon Nov 22 12:51:27 2010 -0600
+
+    Add required files after initial commit
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+commit ae03384b9593aa816e05d6b79b74e830f8a1f37e
+Author: W. Michael Petullo <mike@flyn.org>
+Date:   Mon Nov 22 12:43:38 2010 -0600
+
+    Initial git commit.
+    Signed-off-by: W. Michael Petullo <mike@flyn.org>
+
+======================== Convert to Git-based ChangeLog ========================
+
 21 November 2010 W. Michael Petullo <mike@flyn.org>
 
 	* Make thumbnail optional within DPAPRecord. I am having trouble
@@ -236,7 +480,7 @@
 28 January 2010 W. Michael Petullo <mike@flyn.org>
 
 	* Use lockfile=/var/lock/subsys/dmapd in init script to appease
-	rpmlint (used /var/lock/subsys/$prog before).
+	rpmlint (used /var/lock/subsys/ before).
 
 	* Create default configuration file.
 

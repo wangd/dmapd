@@ -1,3 +1,7 @@
+Git to Changelog
+
+Guarantee at least one metadata plugin compiles?
+
 *** Should db_dir be in DmapdDMAPDb or DmapdDMAPGHashTableDb? Should get dup or static_str?
 
 *** Video playlist override audio playlists when both directories are listed in dmapd.conf
