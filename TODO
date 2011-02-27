@@ -1,22 +1,41 @@
-Git to Changelog
+= Short term ===================================================================
 
-Guarantee at least one metadata plugin compiles?
+Noah: DNS-SD implementation
 
-*** Should db_dir be in DmapdDMAPDb or DmapdDMAPGHashTableDb? Should get dup or static_str?
+Noah: write unit tests
 
-*** Video playlist override audio playlists when both directories are listed in dmapd.conf
+Mike: fix: video playlist override audio playlists when both directories
+are listed in dmapd.conf
 
-*** Allow user to set limit for memory image manipulation
+Mike: investigate doxygen vs. gtk-doc
 
-*** Unit tests
+= Mid term =====================================================================
 
-*** Dynamically adjust database when files are added to directories (inotify?). See "Kernel Korner - Intro to inotify"
-	
-*** Support playlists using totem-pl-parser
+Mike: modular user interface
 
-*** Fix seeking (see libdmapsharing TODO)
+Noah: investigate XCode integration
 
-Is dmapd-dmap-db.c really needed? Why can't a loadable module just implement an interface?
+Noah: iOS DAAP server App
+
+Mike: dynamically adjust database when files are added to directories
+(inotify?). See "Kernel Korner - Intro to inotify"
+
+Noah: support playlists using totem-pl-parser
+
+Mike: fix seeking (see libdmapsharing TODO)
+
+Mike: is dmapd-dmap-db.c really needed? Why can't a loadable module just
+implement an interface?
+
+Mike: reconcile db with filesystem on dmapd start, store hash (include
+dmapd version) to determine if up to date?  Fix handling of bad blob data
+(DmapdD[AP]APRecord).
+
+Mike: Migrate command line parsing to dmapd.xml.
+
+See FIXME's in VIPS code
+
+= Long term ====================================================================
 
 Fix BDB code
 	bdb: segfault if db already exists when dmapd starts
@@ -27,23 +46,14 @@ Fix BDB code
 
 	see FIXME about memory lead in bdb
 
-reconcile db with filesystem on dmapd start, store hash (include dmapd version) to determine if up to date?
-
-Fix handling of bad blob data (DmapdD[AP]APRecord).
-
-See FIXME's in vips code
-
-Strings are copied a few times, but this does not seem to be as big a
+Mike: Strings are copied a few times, but this does not seem to be as big a
 problem as the GNode / DMAPStructureItem overhead.
 	dmapd:dmapd-daap-record.c: g_value_set_string -> g_value_set_static_string
 	libdmapsharing:dmap-structure.c: same as above.
-
-Migrate command line parsing to dmapd.xml.
-
-Update documentation in dmapd.xml.
+should db_dir be in DmapdDMAPDb or
+DmapdDMAPGHashTableDb? Should get dup or static_str?
 
 GStreamer:
 	- DV State change failed for /shared/Storage/Movies/2006 1707 Oak/2006_house_condition_5.dv Bugzilla #569924
-	- Break up gstreamer packages (see OpenWRT example)
 
 Why do some albums (e.g.: 2008 Landscape) appear blank?
