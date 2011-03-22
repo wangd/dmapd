@@ -1,13 +1,13 @@
 #!/bin/sh
 
+git log > ChangeLog
+
 aclocal || exit 1
 autoconf || exit 1
 autoheader || exit 1
 libtoolize --force || glibtoolize --force || exit 1
 automake -a || exit 1
 ./configure $* || exit 1
-
-git log > ChangeLog
 
 cat <<EOF >> ChangeLog
 
