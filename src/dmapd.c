@@ -319,19 +319,19 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 		     &has_video,
 		      NULL);
 
-	if (! (location && format && cacheuri && cachepath)) {
+	if (! (location && format)) {
 		g_warning ("Error reading record properties for transcoding");
 		return;
 	}
 
 	/* FIXME: make target format flexible: */
 	if (! strcmp (format, "mp3")) {
-		g_debug ("Transcoding not necessary");
+		g_debug ("Transcoding not necessary %s", location);
 		return;
 	}
 
 	if (has_video) {
-		g_debug ("Not transcoding video");
+		g_debug ("Not transcoding video %s", location);
 		return;
 	}
 
@@ -340,10 +340,10 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 
 	if (! g_file_test (cachepath, G_FILE_TEST_EXISTS)) {
 		/* FIXME: return value, not void: */
-		g_debug ("Transcoding to %s", cachepath);
+		g_debug ("Transcoding %s to %s", location, cachepath);
 		do_transcode (record, cachepath);
 	} else {
-		g_debug ("Found transcoded data at %s", cachepath);
+		g_debug ("Found transcoded data at %s for %s", cachepath, location);
 	}
 
 	/* Replace previous location with URI to transcoded file. */

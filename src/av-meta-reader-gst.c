@@ -364,6 +364,8 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 
 	g_mutex_lock (gst_reader->priv->tag_read);
 
+	g_debug("Looking at %s", path);
+
 	if (! setup_pipeline (gst_reader))
 		goto _return;
 
@@ -402,6 +404,11 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 		g_warning ("Failed in message reading for %s", path);
 	}
 
+	if (transition_pipeline (gst_reader->priv->pipeline, GST_STATE_NULL) ==
+		FALSE) {
+		g_error ("Failed to transition GStreamer state to NULL");
+	}
+
 	/* NOTE: Must set has_video before calling insert_tag. */
 	g_object_set (record, "has-video", gst_reader->priv->has_video, NULL);
 
@@ -416,11 +423,6 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	}
 
 _return:
-	if (transition_pipeline (gst_reader->priv->pipeline, GST_STATE_NULL) ==
-		FALSE) {
-		g_error ("Failed to transition GStreamer state to NULL");
-	}
-
 	gst_object_unref (gst_reader->priv->pipeline);
 	av_meta_reader_gst_reset (gst_reader);
 
