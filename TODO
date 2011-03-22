@@ -50,8 +50,3 @@ problem as the GNode / DMAPStructureItem overhead.
 	libdmapsharing:dmap-structure.c: same as above.
 should db_dir be in DmapdDMAPDb or
 DmapdDMAPGHashTableDb? Should get dup or static_str?
-
-GStreamer:
-	- DV State change failed for /shared/Storage/Movies/2006 1707 Oak/2006_house_condition_5.dv Bugzilla #569924
-
-Why do some albums (e.g.: 2008 Landscape) appear blank?
