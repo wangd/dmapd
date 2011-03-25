@@ -5,8 +5,6 @@ Noah: write unit tests
 Mike: fix: video playlist override audio playlists when both directories
 are listed in dmapd.conf
 
-Mike: investigate doxygen vs. gtk-doc
-
 = Mid term =====================================================================
 
 Mike: modular user interface

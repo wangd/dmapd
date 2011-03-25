@@ -36,7 +36,9 @@ struct DmapdDAAPRecordPrivate {
 	gint mediakind;			/* FIXME: actually enum. */
 	char *title;
 	const char *album;
+	const char *sort_album;
 	const char *artist;
+	const char *sort_artist;
 	const char *genre;
 	gboolean has_video;
 	gint rating;
@@ -93,9 +95,21 @@ dmapd_daap_record_set_property (GObject *object,
 			stringleton_unref (record->priv->album);
 			record->priv->album = stringleton_ref (g_value_get_string(value));
 			break;
+		case PROP_SORT_ALBUM:
+			stringleton_unref (record->priv->sort_album);
+			// FIXME: This should be used, but g_value_get_string(value) can be NULL
+			// record->priv->sort_artist = stringleton_ref (g_value_get_string(value));
+			record->priv->sort_album = g_value_get_string(value);
+			break;
 		case PROP_ARTIST:
 			stringleton_unref (record->priv->artist);
 			record->priv->artist = stringleton_ref (g_value_get_string(value));
+			break;
+		case PROP_SORT_ARTIST:
+			stringleton_unref (record->priv->sort_artist);
+			// FIXME: This should be used, but g_value_get_string(value) can be NULL
+			// record->priv->sort_artist = stringleton_ref (g_value_get_string(value));
+			record->priv->sort_artist = g_value_get_string(value);
 			break;
 		case PROP_GENRE:
 			stringleton_unref (record->priv->genre);
@@ -165,13 +179,13 @@ dmapd_daap_record_get_property (GObject *object,
 			g_value_set_static_string (value, record->priv->album);
 			break;
 		case PROP_SORT_ALBUM:
-			g_value_set_static_string (value, record->priv->album);
+			g_value_set_static_string (value, record->priv->sort_album);
 			break;
 		case PROP_ARTIST:
 			g_value_set_static_string (value, record->priv->artist);
 			break;
 		case PROP_SORT_ARTIST:
-			g_value_set_static_string (value, record->priv->artist);
+			g_value_set_static_string (value, record->priv->sort_artist);
 			break;
 		case PROP_GENRE:
 			g_value_set_static_string (value, record->priv->genre);
