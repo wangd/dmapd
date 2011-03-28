@@ -198,6 +198,9 @@ thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 	GError *error = NULL;
 	gboolean got_thumb = FALSE;
 
+	*size = 0;
+	*thumb = NULL;
+
 	if( strcmp( VIPS_OBJECT_CLASS( format )->nickname, "jpeg" ) == 0 ) {
 		/* JPEGs get special treatment. libjpeg supports fast shrink-on-read,
 		 * so if we have a JPEG, we can ask VIPS to load a lower resolution
@@ -264,8 +267,6 @@ thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 	}
 
 	if (shrink_factor( in, out ) || ! g_file_get_contents (thumbpath, (gchar **) thumb, size, &error)) {
-		*size = 0;
-		*thumb = NULL;
 		g_warning ("Error reading generated thumbnail at %s", thumbpath);
 	} else {
 		g_debug ("Generated thumbnail");
@@ -360,6 +361,8 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	if (thumbnail (im, format, &thumbnail_data, &thumbnail_size)) {
 		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
 		g_byte_array_append (thumbnail_array, thumbnail_data, thumbnail_size);
+	} else {
+		thumbnail_array = g_byte_array_sized_new (0);
 	}
 	g_object_set (record, "thumbnail", thumbnail_array, NULL);
 

@@ -12,7 +12,7 @@
 
 	a. Run dmapd in "valgrind --leak-check=full --num-callers=50"
 
-	b. Run stress test driver client for 5 minutes
+	b. Run stress test driver client for 5 minutes (kill with TERM)
 
 	c. Review results
 

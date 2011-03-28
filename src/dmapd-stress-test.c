@@ -46,20 +46,45 @@ create_connection (const DMAPMdnsBrowserServiceType protocol,
 static void
 print_record (gpointer id, DMAPRecord *record, gpointer user_data)
 {
-	gchar *artist, *title;
+	if (IS_DAAP_RECORD (record)) {
+		gchar *artist = NULL, *title = NULL;
 
-	/* FIXME: print all record properties; need DAAP and DPAP version: */
-	g_object_get (record,
-		     "songartist", &artist,
-		     "title",  &title,
-		     NULL);
+		/* FIXME: print all record properties; need DAAP and DPAP version: */
+		g_object_get (record,
+			     "songartist", &artist,
+			     "title",  &title,
+			     NULL);
 
-	/* FIXME: also actually download media file. */
+		g_assert (artist);
+		g_assert (title);
 
-	g_print ("%d: %s %s\n", GPOINTER_TO_UINT (id), artist, title);
+		/* FIXME: also actually download media file. */
 
-	g_free (artist);
-	g_free (title);
+		g_print ("%d: %s %s\n", GPOINTER_TO_UINT (id), artist, title);
+
+		g_free (artist);
+		g_free (title);
+	} else if (IS_DPAP_RECORD (record)) {
+		gchar *filename = NULL, *format = NULL;
+
+		/* FIXME: print all record properties; need DAAP and DPAP version: */
+		g_object_get (record,
+			     "filename", &filename,
+			     "format",  &format,
+			     NULL);
+
+		g_assert (filename);
+		g_assert (format);
+
+		/* FIXME: also actually download media file. */
+
+		g_print ("%d: %s %s\n", GPOINTER_TO_UINT (id), filename, format);
+
+		g_free (filename);
+		g_free (format);
+	} else {
+		g_error ("Bad record");
+	}
 }
 
 static DMAPMdnsBrowserServiceType
