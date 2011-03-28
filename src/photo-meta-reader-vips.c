@@ -136,7 +136,6 @@ shrink_factor( IMAGE *in, IMAGE *out )
 	if( residual > 1.0 )
 		interp = vips_interpolate_nearest_static();
 	else
-		/* FIXME: valgrind possible leak */
 		interp = vips_interpolate_bilinear_static();
 
 	if( im_open_local_array( out, t, 9, "thumbnail", "p" ) )
@@ -181,7 +180,7 @@ shrink_factor( IMAGE *in, IMAGE *out )
 		x = t[4];
 	}
 
-	/* FIXME: valgrind leak: */
+	/* FIXME: valgrind leak? */
 	if( im_copy( x, out ) )
 		return( -1 );
 
@@ -217,7 +216,6 @@ thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 			} else {
 				*thumb = g_new (gchar, *size);
 
-				/* FIXME: leak or correct? */
 				memcpy (*thumb, ptr, *size);
 
 				g_debug ("Read EXIF thumbnail of size %lu", *size);
@@ -305,7 +303,6 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 
 	g_debug ("Processing %s", path);
 
-	/* FIXME: valgrind possible leak */
 	if( !(format = vips_format_for_file( path)) ) {
 		g_warning ("Do not know how to handle %s", path);
 		goto _done_no_im;
@@ -347,8 +344,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 			g_warning ("Failed to read comments from %s: %s", im->filename, im_error_buffer ());
 			im_error_clear ();
 		} else {
-			/* FIXME: leak or correct? */
-			g_object_set (record, "comments", g_strdup (comments), NULL);
+			g_object_set (record, "comments", comments, NULL);
 		}
 	}
 
@@ -361,6 +357,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	if (thumbnail (im, format, &thumbnail_data, &thumbnail_size)) {
 		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
 		g_byte_array_append (thumbnail_array, thumbnail_data, thumbnail_size);
+		g_free (thumbnail_data);
 	} else {
 		thumbnail_array = g_byte_array_sized_new (0);
 	}
