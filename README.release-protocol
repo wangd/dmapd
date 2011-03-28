@@ -22,13 +22,13 @@
 
 	b. git diff, confirm changes
 
-	c. git commit -a -s, log "Bump version number"
+	c. git commit -a -s -m "Bump version number"
 
 	d. git tag -s DMAPD_X_Y_Z -m "Tag for X.Y.Z release."
 
 	e. git push
 
-	f. Publish tarball
+	f. Publish tarball (./configure --enable-gtk-doc --disable-maintainer-mode && make dist)
 
 NOTE: stress test driver
 
