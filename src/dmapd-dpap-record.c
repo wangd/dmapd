@@ -192,12 +192,18 @@ dmapd_dpap_record_to_blob (DMAPRecord *record)
 			 sizeof (priv->rating));
         blob_add_string (blob, priv->location);
         blob_add_string (blob, priv->filename);
-	blob_add_atomic (blob, (const guint8 *) &(priv->thumbnail->len),
-			 sizeof (priv->thumbnail->len));
+	if (priv->thumbnail) {
+		blob_add_atomic (blob, (const guint8 *) &(priv->thumbnail->len),
+				 sizeof (priv->thumbnail->len));
 
-	g_byte_array_append (blob,
-			     DMAPD_DPAP_RECORD (record)->priv->thumbnail->data,
-			     DMAPD_DPAP_RECORD (record)->priv->thumbnail->len);
+		g_byte_array_append (blob,
+				     DMAPD_DPAP_RECORD (record)->priv->thumbnail->data,
+				     DMAPD_DPAP_RECORD (record)->priv->thumbnail->len);
+	} else {
+		gsize zero = 0;
+		blob_add_atomic (blob, (const guint8 *) &zero,
+				 sizeof (priv->thumbnail->len));
+	}
 
         blob_add_string (blob, priv->aspectratio);
 	blob_add_atomic (blob, (const guint8 *) &(priv->height),

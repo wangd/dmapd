@@ -28,7 +28,8 @@
 
 typedef enum {
 	CACHE_TYPE_RECORD,
-	CACHE_TYPE_TRANSCODED_DATA
+	CACHE_TYPE_TRANSCODED_DATA,
+	CACHE_TYPE_THUMBNAIL_DATA
 } cache_type_t;
 
 GByteArray *blob_add_atomic (GByteArray *blob,

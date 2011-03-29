@@ -363,6 +363,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 		thumbnail_array = g_byte_array_sized_new (0);
 	}
 	g_object_set (record, "thumbnail", thumbnail_array, NULL);
+	g_byte_array_unref(thumbnail_array);
 
 	fnval = TRUE;
 

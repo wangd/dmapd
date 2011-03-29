@@ -211,10 +211,19 @@ cache_path (cache_type_t type, const gchar *db_dir, const gchar *imagepath)
 
         dmap_hash_generate (1, (const guchar*) filename, 2, hash, 0);
 
-	if (type == CACHE_TYPE_RECORD) {
+	switch (type) {
+	case CACHE_TYPE_RECORD:
 		cachepath = g_strdup_printf ("%s/%s.%s", db_dir, hash, "record");
-	} else if (type == CACHE_TYPE_TRANSCODED_DATA) {
-		cachepath = g_strdup_printf ("%s/%s.%s", db_dir, hash, "mp3");
+		break;
+	case CACHE_TYPE_TRANSCODED_DATA:
+		/* FIXME: set extension properly? */
+		cachepath = g_strdup_printf ("%s/%s.%s", db_dir, hash, "data");
+		break;
+	case CACHE_TYPE_THUMBNAIL_DATA:
+		cachepath = g_strdup_printf ("%s/%s.%s", db_dir, hash, "thumb");
+		break;
+	default:
+		g_error ("Bad cache path type");
 	}
 
         return cachepath;
