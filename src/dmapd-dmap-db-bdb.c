@@ -40,6 +40,7 @@ static DMAPRecord *
 dmapd_dmap_db_bdb_lookup_by_id	(const DMAPDb *db, guint id)
 {
 	DBT key, data;
+	GByteArray *blob;
 	DMAPRecord *record = NULL;
 	DMAPRecordFactory *factory = NULL;
 	DmapdDMAPDbBDBPrivate *priv = DMAPD_DMAP_DB_BDB (db)->priv;
@@ -61,11 +62,12 @@ dmapd_dmap_db_bdb_lookup_by_id	(const DMAPDb *db, guint id)
 	g_object_get (DMAPD_DMAP_DB (db), "record-factory", &factory, NULL);
 	g_assert (factory);
 	record = dmap_record_factory_create (factory, NULL);
-	dmap_record_set_from_blob (DMAP_RECORD (record), data.data);
 
-	/* FIXME: causes an occasional crash:
-	g_byte_array_free (data.data, FALSE);
-	*/
+	blob = g_byte_array_sized_new (data.size);
+	g_byte_array_append (blob, data.data, data.size);
+	dmap_record_set_from_blob (DMAP_RECORD (record), blob);
+
+	g_byte_array_unref (blob);
 
 _return:
 	return record;
@@ -76,19 +78,22 @@ dmapd_dmap_db_bdb_lookup_id_by_location (const DMAPDb *db, const gchar *location
 {
 	int id;
 	guint fnval = 0;
+	gboolean found = FALSE;
 	/* FIXME: this code is copied elsewhere in this class: */
 	/* id == 0 indicates rollover! */
-	/* NOTE: this should be 0, not G_MAXINT + 1, but iPhoto can't handle full range of guint: */
-	for (id = nextid + 1; id != ((guint) G_MAXINT) + 1; id++) {
-		const gchar *_location;
+	// NOTE: this should be = G_MAXUINT, not G_MAXINT, but iPhoto can't handle full range of guint:
+	for (id = G_MAXINT; id > nextid && ! found; id--) {
+		const gchar *_location = NULL;
 		DMAPRecord *record = dmapd_dmap_db_bdb_lookup_by_id (db, id);
 		if (record) {
 			g_object_get (record, "location", &_location, NULL);
+			g_assert (_location);
 			g_object_unref (record);
 			if (! strcmp (_location, location)) {
 				fnval = id;
-				break;
+				found = TRUE;
 			}
+			g_free (_location);
 		}
 	}
 
@@ -102,8 +107,8 @@ dmapd_dmap_db_bdb_foreach	(const DMAPDb *db,
 {
 	guint id;
 	/* id == 0 indicates rollover! */
-	/* NOTE: this should be 0, not G_MAXINT + 1, but iPhoto can't handle full range of guint: */
-	for (id = nextid + 1; id != ((guint) G_MAXINT) + 1; id++) {
+	// NOTE: this should be = G_MAXUINT, not G_MAXINT, but iPhoto can't handle full range of guint:
+	for (id = G_MAXINT; id > nextid; id--) {
 		DMAPRecord *record = dmapd_dmap_db_bdb_lookup_by_id (db, id);
 		func (GUINT_TO_POINTER (id), record, data);
 		/* FIXME: This causes a leak, but can't unref here because libdmapsharing needs data to remain at serialization time:
@@ -143,7 +148,7 @@ dmapd_dmap_db_bdb_add_with_id (DMAPDb *_db, DMAPRecord *record, guint id)
 	key.size = sizeof (id);
 
 	GByteArray *blob = dmap_record_to_blob (record);
-	data.data = blob;
+	data.data = blob->data;
 	data.size = blob->len;
 
 	if ((ret = priv->db->put (priv->db, NULL, &key, &data, 0)) != 0) {
@@ -151,9 +156,7 @@ dmapd_dmap_db_bdb_add_with_id (DMAPDb *_db, DMAPRecord *record, guint id)
 		g_error ("Error inserting into Berkeley Database");
 	}
 
-	/* FIXME: this free corrupts the database
-	g_byte_array_free (blob, TRUE);
-	*/
+	g_byte_array_unref (blob);
 
 	return id;
 }
@@ -223,8 +226,10 @@ dmapd_dmap_db_bdb_constructor (GType type, guint n_construct_params, GObjectCons
 
 	numrec = dmapd_dmap_db_bdb_count (DMAP_DB (db));
 	g_debug ("Opened database with %" G_GINT64_FORMAT " records", numrec);
-	/* NOTE: this should be G_MAXUINT, but iPhoto can't handle it: */
+	// NOTE: this should be G_MAXUINT, not G_MAXINT, but iPhoto can't handle full range of guint:
 	nextid = G_MAXINT - numrec;
+
+	g_free (db_dir);
 
 	return G_OBJECT (db);
 }
