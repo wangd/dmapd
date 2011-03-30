@@ -71,7 +71,9 @@ photo_meta_reader_graphicsmagick_read (PhotoMetaReader *reader,
 	} else {
 		ExifData *d;
 		struct stat buf;
-		size_t size;
+		size_t thumbnail_size;
+		char *thumbnail_data;
+		GByteArray *thumbnail_array;
 		float aspect_ratio;
 		gchar *aspect_ratio_str;
 		gchar *location;
@@ -115,9 +117,13 @@ photo_meta_reader_graphicsmagick_read (PhotoMetaReader *reader,
 					   LanczosFilter,
 					   1.0);
 		}
-		FIXME: port to new GByteArray use, see VIPS code
-		g_object_set (record, "thumbnail", MagickWriteImageBlob (wand, &size), NULL);
-		g_object_set (record, "filesize", size, NULL);
+		thumbnail_data = MagickWriteImageBlob (wand, &thumbnail_size);
+		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
+		g_byte_array_append (thumbnail_array, thumbnail_data, thumbnail_size);
+		MagickRelinquishMemory (thumbnail_data);
+		g_object_set (record, "thumbnail", thumbnail_array, NULL);
+		g_byte_array_unref(thumbnail_array);
+
 		/* FIXME:
 		d = exif_data_new_from_file (path);
 		if (! d) {
