@@ -82,6 +82,7 @@ dmapd_dmap_db_ghashtable_lookup_id_by_location (const DMAPDb *db, const gchar *l
 	return fnval;
 }
 
+/*
 static void
 dmapd_dmap_db_ghashtable_stash_thumbnail (DMAPDb *db, DMAPRecord *record)
 {
@@ -101,6 +102,7 @@ dmapd_dmap_db_ghashtable_stash_thumbnail (DMAPDb *db, DMAPRecord *record)
 		      NULL);
 
 	if (db_dir && location && thumbnail && thumbnail->len > 0) {
+		struct stat st;
 		GError *error = NULL;
 
 		g_debug ("Writing thumbnail to cache");
@@ -109,21 +111,29 @@ dmapd_dmap_db_ghashtable_stash_thumbnail (DMAPDb *db, DMAPRecord *record)
 
 		g_assert (cachepath);
 
-		/* Note that this overwrites existing thumbnail cache which is fine. */
-		g_file_set_contents (cachepath,
-			    (gchar *) thumbnail->data,
-			     thumbnail->len,
-			    &error);
-
-		if (error) {
-			g_warning ("Error writing thumbnail to %s", cachepath);
-		} else {
+		if (stat (cachepath, &st) != 0) {
+			g_debug ("Thumbnail cache already exists");
 			thumbnail = g_byte_array_sized_new (0);
 			g_object_set (record, "thumbnail", thumbnail, NULL);
 			g_byte_array_unref(thumbnail);
+		} else {
+			g_file_set_contents (cachepath,
+				    (gchar *) thumbnail->data,
+				     thumbnail->len,
+				    &error);
+
+			if (error) {
+				g_warning ("Error writing thumbnail to %s, will keep in memory", cachepath);
+			} else {
+				thumbnail = g_byte_array_sized_new (0);
+				g_object_set (record, "thumbnail", thumbnail, NULL);
+				g_byte_array_unref(thumbnail);
+			}
 		}
 
 		g_free (cachepath);
+	} else {
+		g_warning ("Could not stash thumbnail");
 	}
 
 	if (db_dir)
@@ -173,6 +183,8 @@ dmapd_dmap_db_ghashtable_unstash_thumbnail (DMAPDb *db, DMAPRecord *record)
 		}
 
 		g_free (cachepath);
+	} else {
+		g_warning ("Could not unstash thumbnail");
 	}
 
 	if (db_dir)
@@ -180,6 +192,7 @@ dmapd_dmap_db_ghashtable_unstash_thumbnail (DMAPDb *db, DMAPRecord *record)
 	if (location)
 		g_free (location);
 }
+*/
 
 static DMAPRecord *
 dmapd_dmap_db_ghashtable_lookup_by_id	(const DMAPDb *db, guint id)
@@ -190,9 +203,18 @@ dmapd_dmap_db_ghashtable_lookup_by_id	(const DMAPDb *db, guint id)
 	g_object_ref (record);
 
 	/* Kludge to avoid keeping thumbnails in memory: */
+	/*
 	if (IS_DPAP_RECORD (record)) {
+		// FIXME: Need to refactor, can't be more than one outstanding at a time.
+		static DPAPRecord *current = NULL;
+		if (current) {
+			g_debug ("Stashing existing thumbnail");
+			dmapd_dmap_db_ghashtable_stash_thumbnail (db, current);
+		}
 		dmapd_dmap_db_ghashtable_unstash_thumbnail (db, record);
+		current = record;
 	}
+	*/
 
 	return record;
 }
@@ -271,9 +293,11 @@ static guint
 dmapd_dmap_db_ghashtable_add_with_id (DMAPDb *db, DMAPRecord *record, guint id)
 {
 	/* Kludge to avoid keeping thumbnails in memory: */
+	/*
 	if (IS_DPAP_RECORD (record)) {
 		dmapd_dmap_db_ghashtable_stash_thumbnail (db, record);
 	}
+	*/
 
 	g_hash_table_insert (DMAPD_DMAP_DB_GHASHTABLE (db)->priv->db, GUINT_TO_POINTER (id), record);
 	return id;
