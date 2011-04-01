@@ -97,6 +97,7 @@ dmapd_dmap_container_db_interface_init (gpointer iface, gpointer data)
 
 	g_assert (G_TYPE_FROM_INTERFACE (dmap_container_db) == DMAP_TYPE_CONTAINER_DB);
 
+	dmap_container_db->add = dmapd_dmap_container_db_add;
 	dmap_container_db->lookup_by_id = dmapd_dmap_container_db_lookup_by_id;
 	dmap_container_db->foreach = dmapd_dmap_container_db_foreach;
 	dmap_container_db->count = dmapd_dmap_container_db_count;

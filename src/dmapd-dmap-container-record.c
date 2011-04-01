@@ -102,6 +102,7 @@ dmapd_dmap_container_record_get_id (DMAPContainerRecord *record)
 	return DMAPD_DMAP_CONTAINER_RECORD (record)->priv->id;
 }
 
+// NOTE: ignores record parameter.
 static void
 dmapd_dmap_container_record_add_entry (DMAPContainerRecord *container_record,
 				       DMAPRecord *record, gint id)

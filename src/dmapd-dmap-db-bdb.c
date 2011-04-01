@@ -111,9 +111,7 @@ dmapd_dmap_db_bdb_foreach	(const DMAPDb *db,
 	for (id = G_MAXINT; id > nextid; id--) {
 		DMAPRecord *record = dmapd_dmap_db_bdb_lookup_by_id (db, id);
 		func (GUINT_TO_POINTER (id), record, data);
-		/* FIXME: This causes a leak, but can't unref here because libdmapsharing needs data to remain at serialization time:
 		g_object_unref (record);
-		*/
 	}
 }
 
@@ -170,7 +168,7 @@ dmapd_dmap_db_bdb_add (DMAPDb *db, DMAPRecord *record)
 static guint
 dmapd_dmap_db_bdb_add_path (DMAPDb *db, const gchar *path)
 {
-	guint id;
+	guint id = 0;
 	DMAPRecord *record;
 	DMAPRecordFactory *factory = NULL;
 

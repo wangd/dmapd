@@ -34,13 +34,7 @@ See FIXME's in VIPS code
 = Long term ====================================================================
 
 Fix BDB code
-	bdb: segfault if db already exists when dmapd starts
-
-	big memory problem:
-		ghashtable: 46,657,539 byte heap before DPAP client
-		bdb: 911,716,352 byte heap before DPAP client
-
-	see FIXME about memory lead in bdb
+	See by_location FIXME in db-builder-gdir.c.
 
 Mike: Strings are copied a few times, but this does not seem to be as big a
 problem as the GNode / DMAPStructureItem overhead.

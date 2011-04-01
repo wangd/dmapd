@@ -77,17 +77,18 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 				DMAPContainerRecord *record = DMAP_CONTAINER_RECORD (g_object_new (TYPE_DMAPD_DMAP_CONTAINER_RECORD, "name", entry, "full-db", db, NULL));
 				db_builder_gdir_build_db_starting_at (builder, path, db, container_db, record);
 				if (dmap_container_record_get_entry_count (record) > 0)
-					dmapd_dmap_container_db_add (container_db, record);
+					dmap_container_db_add (container_db, record);
 				else
 					g_warning ("Container %s is empty, skipping", entry);
 				g_object_unref (record);
 			} else {
 				DMAPRecord *record;
 				gchar *location;
-				guint id;
+				guint id = 0;
 
 				location = g_strdup_printf ("file://%s", path);
-				id = dmap_db_lookup_id_by_location (db, location);
+				// FIXME: very expensive for BDB module:
+				// id = dmap_db_lookup_id_by_location (db, location);
 				g_free (location);
 
 				if (! id) {
@@ -97,11 +98,9 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 				}
 
 				if (id) {
-					record = dmap_db_lookup_by_id (db, id);
 					if (container_record) {
-						dmap_container_record_add_entry (container_record, record, id);
+						dmap_container_record_add_entry (container_record, NULL, id);
 					}
-					g_object_unref (record);
 				}
 			}
 			g_free (path);

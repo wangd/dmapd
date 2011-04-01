@@ -82,118 +82,6 @@ dmapd_dmap_db_ghashtable_lookup_id_by_location (const DMAPDb *db, const gchar *l
 	return fnval;
 }
 
-/*
-static void
-dmapd_dmap_db_ghashtable_stash_thumbnail (DMAPDb *db, DMAPRecord *record)
-{
-	GByteArray *thumbnail = NULL;
-	gchar *cachepath = NULL, *location = NULL, *db_dir = NULL;
-
-	g_object_get (db,
-	             "db-dir",
-		     &db_dir,
-		      NULL);
-
-	g_object_get (record,
-	             "location",
-		     &location,
-	             "thumbnail",
-		     &thumbnail,
-		      NULL);
-
-	if (db_dir && location && thumbnail && thumbnail->len > 0) {
-		struct stat st;
-		GError *error = NULL;
-
-		g_debug ("Writing thumbnail to cache");
-
-		cachepath = cache_path (CACHE_TYPE_THUMBNAIL_DATA, db_dir, location);
-
-		g_assert (cachepath);
-
-		if (stat (cachepath, &st) != 0) {
-			g_debug ("Thumbnail cache already exists");
-			thumbnail = g_byte_array_sized_new (0);
-			g_object_set (record, "thumbnail", thumbnail, NULL);
-			g_byte_array_unref(thumbnail);
-		} else {
-			g_file_set_contents (cachepath,
-				    (gchar *) thumbnail->data,
-				     thumbnail->len,
-				    &error);
-
-			if (error) {
-				g_warning ("Error writing thumbnail to %s, will keep in memory", cachepath);
-			} else {
-				thumbnail = g_byte_array_sized_new (0);
-				g_object_set (record, "thumbnail", thumbnail, NULL);
-				g_byte_array_unref(thumbnail);
-			}
-		}
-
-		g_free (cachepath);
-	} else {
-		g_warning ("Could not stash thumbnail");
-	}
-
-	if (db_dir)
-		g_free (db_dir);
-	if (location)
-		g_free (location);
-}
-
-static void
-dmapd_dmap_db_ghashtable_unstash_thumbnail (DMAPDb *db, DMAPRecord *record)
-{
-	gchar *location = NULL, *db_dir = NULL;
-	GByteArray *thumbnail = NULL;
-
-	g_object_get (db,
-	             "db-dir",
-		     &db_dir,
-		      NULL);
-
-	g_object_get (record,
-	             "location",
-		     &location,
-	             "thumbnail",
-		     &thumbnail,
-		      NULL);
-
-	if (db_dir && location && thumbnail && thumbnail->len == 0) {
-		size_t  size;
-		GError *error = NULL;
-		gchar *data = NULL, *cachepath = NULL;
-
-		g_debug ("Thumbnail size 0, looking for cached thumbnail");
-
-		cachepath = cache_path (CACHE_TYPE_THUMBNAIL_DATA, db_dir, location);
-
-		g_assert (cachepath);
-
-		g_file_get_contents (cachepath, &data, &size, &error);
-		if (error != NULL) {
-			g_debug ("No thumbnail cached at %s", cachepath);
-		} else {
-			thumbnail = g_byte_array_sized_new (size);
-			g_byte_array_append (thumbnail, data, size);
-			g_object_set (record, "thumbnail", thumbnail, NULL);
-			g_byte_array_unref(thumbnail);
-			g_free (data);
-		}
-
-		g_free (cachepath);
-	} else {
-		g_warning ("Could not unstash thumbnail");
-	}
-
-	if (db_dir)
-		g_free (db_dir);
-	if (location)
-		g_free (location);
-}
-*/
-
 static DMAPRecord *
 dmapd_dmap_db_ghashtable_lookup_by_id	(const DMAPDb *db, guint id)
 {
@@ -201,20 +89,6 @@ dmapd_dmap_db_ghashtable_lookup_by_id	(const DMAPDb *db, guint id)
 
 	record = g_hash_table_lookup (DMAPD_DMAP_DB_GHASHTABLE (db)->priv->db, GUINT_TO_POINTER (id));
 	g_object_ref (record);
-
-	/* Kludge to avoid keeping thumbnails in memory: */
-	/*
-	if (IS_DPAP_RECORD (record)) {
-		// FIXME: Need to refactor, can't be more than one outstanding at a time.
-		static DPAPRecord *current = NULL;
-		if (current) {
-			g_debug ("Stashing existing thumbnail");
-			dmapd_dmap_db_ghashtable_stash_thumbnail (db, current);
-		}
-		dmapd_dmap_db_ghashtable_unstash_thumbnail (db, record);
-		current = record;
-	}
-	*/
 
 	return record;
 }
@@ -292,13 +166,6 @@ load_cached_records (DMAPDb *db, const gchar *db_dir, DMAPRecordFactory *factory
 static guint
 dmapd_dmap_db_ghashtable_add_with_id (DMAPDb *db, DMAPRecord *record, guint id)
 {
-	/* Kludge to avoid keeping thumbnails in memory: */
-	/*
-	if (IS_DPAP_RECORD (record)) {
-		dmapd_dmap_db_ghashtable_stash_thumbnail (db, record);
-	}
-	*/
-
 	g_hash_table_insert (DMAPD_DMAP_DB_GHASHTABLE (db)->priv->db, GUINT_TO_POINTER (id), record);
 	return id;
 }
