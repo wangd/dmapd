@@ -34,6 +34,9 @@ See FIXME's in VIPS code
 = Long term ====================================================================
 
 Fix BDB code
+	Existing DB, are proper ID's used for additional files read
+	(e.g., maxint - last used id)?
+
 	See by_location FIXME in db-builder-gdir.c.
 
 Mike: Strings are copied a few times, but this does not seem to be as big a
