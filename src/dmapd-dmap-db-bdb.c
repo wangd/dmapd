@@ -118,15 +118,7 @@ dmapd_dmap_db_bdb_foreach	(const DMAPDb *db,
 static gint64
 dmapd_dmap_db_bdb_count (const DMAPDb *db)
 {
-	gint64 fnval;
-	DB_BTREE_STAT *statp;
-	DmapdDMAPDbBDBPrivate *priv = DMAPD_DMAP_DB_BDB (db)->priv;
-
-	priv->db->stat (priv->db, NULL, &statp, 0);
-	fnval = statp->bt_ndata;
-	free (statp);
-
-	return fnval;
+	return G_MAXINT - nextid;
 }
 
 static guint
