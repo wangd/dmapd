@@ -36,7 +36,7 @@
 
 	e. git push
 
-	f. Publish tarball (./configure --enable-gtk-doc --disable-maintainer-mode && make dist)
+	f. Publish tarball (./autogen --enable-gtk-doc --disable-maintainer-mode && make dist)
 
 NOTE: stress test driver
 
