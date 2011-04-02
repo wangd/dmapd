@@ -16,7 +16,15 @@
 
 	c. Review results
 
-4. Bump version number:
+4. Test and record memory use (needs work)
+
+	a. Run dmapd using GHashTable and BDB modules
+
+	b. Measure memory use using "top -b" and heap by looking at /proc/PID/maps
+
+	c. Record measurements (where?)
+
+5. Bump version number:
 
 	a. Update configure.ac
 

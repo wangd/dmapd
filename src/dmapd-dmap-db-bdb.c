@@ -185,6 +185,7 @@ G_DEFINE_DYNAMIC_TYPE (DmapdDMAPDbBDB,
 static GObject*
 dmapd_dmap_db_bdb_constructor (GType type, guint n_construct_params, GObjectConstructParam *construct_params)
 {
+	int ret;
         DmapdDMAPDbBDB *db;
 	gchar *db_dir = NULL;
 
@@ -208,10 +209,10 @@ dmapd_dmap_db_bdb_constructor (GType type, guint n_construct_params, GObjectCons
 		g_error ("Could not initialize Berkeley Database");
 
 	db_path = g_strdup_printf ("%s/%s", db_dir, DB_FILENAME);
-	if (db->priv->db->open (db->priv->db, NULL, db_path, NULL,
-	    DB_BTREE, DB_CREATE, 0) != 0) {
+	if ((ret = db->priv->db->open (db->priv->db, NULL, db_path, NULL,
+	    DB_BTREE, DB_CREATE, 0)) != 0) {
 		g_free (db_path);
-		g_error ("Could not open Berkeley Database");
+		g_error ("Could not open Berkeley Database: %s", db_strerror(ret));
 	}
 
 	numrec = dmapd_dmap_db_bdb_count (DMAP_DB (db));
@@ -220,6 +221,7 @@ dmapd_dmap_db_bdb_constructor (GType type, guint n_construct_params, GObjectCons
 	nextid = G_MAXINT - numrec;
 
 	g_free (db_dir);
+	g_free (db_path);
 
 	return G_OBJECT (db);
 }

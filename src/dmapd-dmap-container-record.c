@@ -120,7 +120,7 @@ dmapd_dmap_container_record_get_entry_count (DMAPContainerRecord *record)
 }
 
 static void
-add_to_db (GSList *item, struct DBPair *pair)
+add_to_db (void *item, struct DBPair *pair)
 {
 	DMAPRecord *record = dmap_db_lookup_by_id (pair->src,
 						   GPOINTER_TO_UINT (item));

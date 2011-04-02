@@ -75,7 +75,7 @@ plugin_LTLIBRARIES = \
 	libdb-builder-gdir.la \
 	libdmapd-dmap-db-disk.la
 
-if USE_LIBDB_4_8
+if USE_LIBDB
 plugin_LTLIBRARIES += \
 	libdmapd-dmap-db-bdb.la
 endif
@@ -130,7 +130,7 @@ libdmapd_dmap_db_disk_la_SOURCES = \
 
 libdmapd_dmap_db_disk_la_LDFLAGS = $(MODULE_LIBTOOL_FLAGS)
 
-if USE_LIBDB_4_8
+if USE_LIBDB
 libdmapd_dmap_db_bdb_la_SOURCES = \
         dmapd-dmap-db-bdb.c
 

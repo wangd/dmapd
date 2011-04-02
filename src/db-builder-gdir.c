@@ -82,7 +82,6 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 					g_warning ("Container %s is empty, skipping", entry);
 				g_object_unref (record);
 			} else {
-				DMAPRecord *record;
 				gchar *location;
 				guint id = 0;
 
@@ -154,7 +153,6 @@ G_MODULE_EXPORT void
 dmapd_module_unload (GTypeModule *module)
 {
 }
-
 
 G_DEFINE_DYNAMIC_TYPE (DbBuilderGDir,
                       db_builder_gdir,

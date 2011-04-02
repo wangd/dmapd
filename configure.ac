@@ -181,7 +181,7 @@ AC_SUBST(GSTREAMER_LIBS)
 dnl Check for inotify, used for media directory monitoring
 AC_CHECK_HEADERS([sys/inotify.h])
 
-dnl Check for Berkeley Database
+dnl Check for Berkeley Database 4.8
 # NOTE: AC_CHECK_LIB(db-4.8, ... passed even when headers not installed:
 AC_CHECK_HEADER(db.h, HAVE_DB_H=yes, HAVE_DB_H=no)
 if test x"$HAVE_DB_H" = "xyes"; then
@@ -189,6 +189,21 @@ if test x"$HAVE_DB_H" = "xyes"; then
   AM_CONDITIONAL(USE_LIBDB_4_8, test x"$HAVE_LIBDB_4_8" = "xyes")
 else
   AM_CONDITIONAL(USE_LIBDB_4_8, false)
+fi
+
+dnl Check for Berkeley Database 4.7
+# NOTE: AC_CHECK_LIB(db-4.7, ... passed even when headers not installed:
+AC_CHECK_HEADER(db.h, HAVE_DB_H=yes, HAVE_DB_H=no)
+if test x"$HAVE_DB_H" = "xyes"; then
+  AC_CHECK_LIB(db-4.8, db_create, HAVE_LIBDB_4_7=yes, HAVE_LIBDB_4_7=no)
+  AM_CONDITIONAL(USE_LIBDB_4_7, test x"$HAVE_LIBDB_4_7" = "xyes")
+else
+  AM_CONDITIONAL(USE_LIBDB_4_7, false)
+fi
+
+dnl Set overall Berkeley Database conditional
+if test x"$HAVE_LIBDB_4_7" = "xyes" -o x"$HAVE_LIBDB_4_8" = "xyes"; then
+  AM_CONDITIONAL(USE_LIBDB, true)
 fi
 
 PKG_CHECK_MODULES([CHECK], [check >= 0.9.4],have_check=yes,have_check=no)
