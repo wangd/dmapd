@@ -204,6 +204,8 @@ fi
 dnl Set overall Berkeley Database conditional
 if test x"$HAVE_LIBDB_4_7" = "xyes" -o x"$HAVE_LIBDB_4_8" = "xyes"; then
   AM_CONDITIONAL(USE_LIBDB, true)
+else
+  AM_CONDITIONAL(USE_LIBDB, false)
 fi
 
 PKG_CHECK_MODULES([CHECK], [check >= 0.9.4],have_check=yes,have_check=no)
