@@ -136,8 +136,13 @@ libdmapd_dmap_db_bdb_la_SOURCES = \
 
 libdmapd_dmap_db_bdb_la_LDFLAGS = $(MODULE_LIBTOOL_FLAGS)
 
+if USE_LIBDB_4_8
 libdmapd_dmap_db_bdb_la_LIBADD = \
 	-ldb-4.8
+else
+libdmapd_dmap_db_bdb_la_LIBADD = \
+	-ldb-4.7
+endif
 endif
 
 dmapdincludedir = \
