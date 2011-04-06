@@ -66,7 +66,7 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 	GDir *d = g_dir_open (dir, 0, &error);
 
 	if (error != NULL) {
-		g_error ("%s", error->message);
+		g_warning ("%s", error->message);
 	} else {
 		const gchar *entry;
 		
