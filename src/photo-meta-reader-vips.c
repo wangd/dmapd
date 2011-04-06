@@ -326,7 +326,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	}
 
 	g_object_set (record, "filename", g_basename (path), NULL);
-	location = g_strdup_printf ("file://%s", path);
+	location = g_filename_to_uri (path, NULL, NULL);
 	g_object_set (record, "location", location, NULL);
 	g_free (location);
 

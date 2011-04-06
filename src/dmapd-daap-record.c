@@ -469,7 +469,7 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, gpointer reader)
 			 */
 		}
 
-		location = g_strdup_printf ("file://%s", path);
+		location = g_filename_to_uri (path, NULL, NULL);
 		title = g_path_get_basename (path);
 
 		g_object_set (record, "location",    location, NULL);

@@ -347,7 +347,7 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 	}
 
 	/* Replace previous location with URI to transcoded file. */
-	cacheuri = g_strconcat ("file://", cachepath, NULL);
+	cacheuri = g_filename_to_uri(cachepath, NULL, NULL);
 	g_object_set (record, "location", cacheuri, NULL);
 	g_free (cacheuri);
 	/* FIXME: make target format flexible: */

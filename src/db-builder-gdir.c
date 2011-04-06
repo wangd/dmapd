@@ -85,7 +85,7 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 				gchar *location;
 				guint id = 0;
 
-				location = g_strdup_printf ("file://%s", path);
+				location = g_filename_to_uri (path, NULL, NULL);
 				// FIXME: very expensive for BDB module:
 				// id = dmap_db_lookup_id_by_location (db, location);
 				g_free (location);
