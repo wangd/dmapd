@@ -40,12 +40,18 @@ G_BEGIN_DECLS
 #define PHOTO_META_READER_GET_CLASS(k) (G_TYPE_INSTANCE_GET_CLASS ((k), \
                                         TYPE_PHOTO_META_READER, \
                                         PhotoMetaReaderClass))
+#define PHOTO_META_READER_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), \
+					  TYPE_PHOTO_META_READER, \
+					  PhotoMetaReaderPrivate))
 
 typedef struct _PhotoMetaReader PhotoMetaReader;
 typedef struct _PhotoMetaReaderClass PhotoMetaReaderClass;
 
+typedef struct PhotoMetaReaderPrivate PhotoMetaReaderPrivate;
+
 struct _PhotoMetaReader {
 	GObject parent;
+	PhotoMetaReaderPrivate *priv;
 };
 
 struct _PhotoMetaReaderClass {

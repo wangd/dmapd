@@ -21,14 +21,76 @@
 
 #include "photo-meta-reader.h"
 
+struct PhotoMetaReaderPrivate {
+	guint max_thumbnail_width;	
+};
+
+enum {
+	PROP_0,
+	PROP_MAX_THUMBNAIL_WIDTH
+};
+
+static void
+photo_meta_reader_set_property (GObject * object,
+                                guint prop_id,
+				const GValue * value,
+				GParamSpec * pspec)
+{
+	PhotoMetaReader *reader = PHOTO_META_READER (object);
+
+	switch (prop_id) {
+	case PROP_MAX_THUMBNAIL_WIDTH:
+		reader->priv->max_thumbnail_width = g_value_get_uint (value);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+photo_meta_reader_get_property (GObject *object,
+                                guint prop_id,
+                                GValue *value,
+				GParamSpec *pspec)
+{
+	PhotoMetaReader *reader = PHOTO_META_READER (object);
+
+	switch (prop_id) {
+	case PROP_MAX_THUMBNAIL_WIDTH:
+		g_value_set_uint (value, reader->priv->max_thumbnail_width);
+		break;
+	default:
+		G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+} 
+
 static void
 photo_meta_reader_init (PhotoMetaReader *reader)
 {
+	reader->priv = PHOTO_META_READER_GET_PRIVATE (reader);
 }
 
 static void
 photo_meta_reader_class_init (PhotoMetaReaderClass *klass)
 {
+	GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+
+	g_type_class_add_private (klass, sizeof (PhotoMetaReaderPrivate));
+
+	gobject_class->set_property = photo_meta_reader_set_property;
+	gobject_class->get_property = photo_meta_reader_get_property;
+
+	g_object_class_install_property (gobject_class,
+	                                 PROP_MAX_THUMBNAIL_WIDTH,
+					 g_param_spec_uint ("max-thumbnail-width",
+					                    "Maximum thumbnail width",
+							    "Maximum thumbnail width",
+							     1,
+							     G_MAXUINT,
+							     128,
+							     G_PARAM_READWRITE));
 }
 
 G_DEFINE_TYPE (PhotoMetaReader, photo_meta_reader, G_TYPE_OBJECT)

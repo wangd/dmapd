@@ -30,6 +30,8 @@
 #include "photo-meta-reader-graphicsmagick.h"
 #include "dmapd-dpap-record.h"
 
+const int DEFAULT_MAX_THUMBNAIL_WIDTH = 128;
+
 struct PhotoMetaReaderGraphicsmagickPrivate {
 };
 
@@ -77,6 +79,7 @@ photo_meta_reader_graphicsmagick_read (PhotoMetaReader *reader,
 		float aspect_ratio;
 		gchar *aspect_ratio_str;
 		gchar *location;
+		guint max_thumbnail_width = 0;
 
 		if (stat (path, &buf) == -1) {
 			g_warning ("Unable to determine size of %s", path);
@@ -104,16 +107,21 @@ photo_meta_reader_graphicsmagick_read (PhotoMetaReader *reader,
 		g_object_set (record, "aspect-ratio", aspect_ratio_str, NULL);
 		g_free (aspect_ratio_str);
 
+		g_object_get (reader, "max-thumbnail-width", &max_thumbnail_width, NULL);
+		if (! max_thumbnail_width) {
+			max_thumbnail_width = DEFAULT_MAX_THUMBNAIL_WIDTH;
+		}
+
 		if (MagickGetImageWidth (wand) > MagickGetImageHeight (wand)) {
 			MagickResizeImage (wand,
-					   106,
-					   (1 / aspect_ratio) * 106,
+					   max_thumbnail_width,
+					   (1 / aspect_ratio) * max_thumbnail_width,
 					   LanczosFilter,
 					   1.0);
 		} else {
 			MagickResizeImage (wand,
-					   aspect_ratio * 106,
-					   106,
+					   aspect_ratio * max_thumbnail_width,
+					   max_thumbnail_width,
 					   LanczosFilter,
 					   1.0);
 		}

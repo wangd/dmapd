@@ -66,20 +66,21 @@ static char *protocol_map[] = {
 
 GMainLoop *loop;
 
-static GSList *music_dirs        = NULL;
-static GSList *picture_dirs      = NULL;
-static gchar *db_dir		 = NULL;
-static gchar *lockpath           = NULL;
-static gchar *pidpath            = NULL;
-static gchar *user               = NULL;
-static gchar *group              = NULL;
-static gboolean foreground       = FALSE;
-static gchar *share_name         = NULL;
-static gchar *transcode_mimetype = NULL;
-static gboolean rt_transcode     = FALSE;
-static gchar *db_module          = NULL;
-static gchar *av_module          = NULL;
-static gchar *photo_module       = NULL;
+static GSList *music_dirs         = NULL;
+static GSList *picture_dirs       = NULL;
+static gchar *db_dir              = NULL;
+static gchar *lockpath            = NULL;
+static gchar *pidpath             = NULL;
+static gchar *user                = NULL;
+static gchar *group               = NULL;
+static gboolean foreground        = FALSE;
+static gchar *share_name          = NULL;
+static gchar *transcode_mimetype  = NULL;
+static gboolean rt_transcode      = FALSE;
+static gchar *db_module           = NULL;
+static gchar *av_module           = NULL;
+static gchar *photo_module        = NULL;
+static guint  max_thumbnail_width = 128;
 
 static void
 free_globals (void)
@@ -119,6 +120,7 @@ static GOptionEntry entries[] = {
 	{ "group", 'g', 0, G_OPTION_ARG_STRING, &group, "Group to run as", NULL },
 	{ "transcode-mimetype", 't', 0, G_OPTION_ARG_STRING, &transcode_mimetype, "Target MIME type for transcoding", NULL },
 	{ "rt-transcode", 'r', 0, G_OPTION_ARG_NONE, &rt_transcode, "Perform transcoding in real-time", NULL },
+	{ "max-thumbnail-width", 'w', 0, G_OPTION_ARG_INT, &max_thumbnail_width, "Maximum thumbnail size (may reduce memory use)", NULL },
 	{ NULL }
 };
 
@@ -487,7 +489,9 @@ int main (int argc, char *argv[])
 
 	if (strcmp (photo_module, "null") != 0) {
 		GOptionGroup *group;
-		photo_meta_reader = PHOTO_META_READER (object_from_module (TYPE_PHOTO_META_READER, photo_module, NULL));
+		photo_meta_reader = PHOTO_META_READER (object_from_module (TYPE_PHOTO_META_READER,
+		                                                           photo_module,
+									   NULL));
 		if (photo_meta_reader) {
 			group = photo_meta_reader_get_option_group (photo_meta_reader);
 			if (group)
@@ -500,6 +504,8 @@ int main (int argc, char *argv[])
 	if (! g_option_context_parse (context, &argc, &argv, &error)) {
 		g_error ("Option parsing failed: %s", error->message);
 	}
+
+	g_object_set (photo_meta_reader, "max-thumbnail-width", max_thumbnail_width, NULL);
 
 	if (! (av_meta_reader || photo_meta_reader)) {
 		g_error ("Neither an AV or photograph metadata reader plugin could be loaded");

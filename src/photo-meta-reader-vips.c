@@ -27,30 +27,12 @@
 #include "photo-meta-reader-vips.h"
 #include "dmapd-dpap-record.h"
 
-const int THUMBNAIL_SIZE = 128;
+const int DEFAULT_MAX_THUMBNAIL_WIDTH = 128;
 
 /*
 struct PhotoMetaReaderVipsPrivate {
 };
 */
-
-static void
-photo_meta_reader_vips_set_property (GObject *object,
-				 guint prop_id,
-				 const GValue *value,
-				 GParamSpec *pspec)
-{
-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-}
-
-static void
-photo_meta_reader_vips_get_property (GObject *object,
-				 guint prop_id,
-				 GValue *value,
-				 GParamSpec *pspec)
-{
-	G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-}
 
 static GOptionGroup *
 photo_meta_reader_vips_get_option_group (PhotoMetaReader *reader)
@@ -67,13 +49,22 @@ photo_meta_reader_vips_get_option_group (PhotoMetaReader *reader)
  * bilinear interpolation to get the exact size we want.
  */
 static int
-calculate_shrink( int width, int height, double *residual )
+calculate_shrink( PhotoMetaReader *reader, int width, int height, double *residual )
 {
+	guint max_thumbnail_width = 0;
+	
+	g_object_get (reader, "max-thumbnail-width", &max_thumbnail_width, NULL);
+	if (! max_thumbnail_width) {
+		max_thumbnail_width = DEFAULT_MAX_THUMBNAIL_WIDTH;
+	}
+
+	g_debug ("Max thumbnail width is %d", max_thumbnail_width);
+
 	/* We shrink to make the largest dimension equal to size.
 	 */
 	int dimension = IM_MAX( width, height );
 
-	double factor = dimension / (double) THUMBNAIL_SIZE;
+	double factor = dimension / (double) max_thumbnail_width;
 
 	/* If the shrink factor is <=1.0, we need to zoom rather than shrink.
 	 * Just set the factor to 1 in this case.
@@ -91,7 +82,7 @@ calculate_shrink( int width, int height, double *residual )
 	/* Therefore residual scale factor is.
 	 */
 	if( residual )
-		*residual = THUMBNAIL_SIZE / (double) isize;
+		*residual = max_thumbnail_width / (double) isize;
 
 	return( shrink );
 }
@@ -120,7 +111,7 @@ sharpen_filter( void )
 }
 
 static int
-shrink_factor( IMAGE *in, IMAGE *out )
+shrink_factor( PhotoMetaReader *reader, IMAGE *in, IMAGE *out )
 {
 	IMAGE *t[9];
 	IMAGE *x;
@@ -128,7 +119,7 @@ shrink_factor( IMAGE *in, IMAGE *out )
 	double residual;
 	VipsInterpolate *interp;
 
-	shrink = calculate_shrink( in->Xsize, in->Ysize, &residual );
+	shrink = calculate_shrink( reader, in->Xsize, in->Ysize, &residual );
 
 	/* For images smaller than the thumbnail, we upscale with nearest
 	 * neighbor. Otherwise we makes thumbnails that look fuzzy and awful.
@@ -188,7 +179,7 @@ shrink_factor( IMAGE *in, IMAGE *out )
 }
 
 static int
-thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
+thumbnail( PhotoMetaReader *reader, IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 {
 	gint fd;
 	IMAGE *out;
@@ -236,7 +227,7 @@ thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 			}
 		}
 
-		shrink = calculate_shrink( in->Xsize, in->Ysize, NULL );
+		shrink = calculate_shrink( reader, in->Xsize, in->Ysize, NULL );
 
 		if( shrink > 8 )
 			shrink = 8;
@@ -264,7 +255,7 @@ thumbnail( IMAGE *in, VipsFormatClass *format, void **thumb, size_t *size)
 		goto _done_no_out;
 	}
 
-	if (shrink_factor( in, out ) || ! g_file_get_contents (thumbpath, (gchar **) thumb, size, &error)) {
+	if (shrink_factor( reader, in, out ) || ! g_file_get_contents (thumbpath, (gchar **) thumb, size, &error)) {
 		g_warning ("Error reading generated thumbnail at %s", thumbpath);
 	} else {
 		g_debug ("Generated thumbnail");
@@ -354,7 +345,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	g_object_set (record, "rating", 5, NULL);
 
 	/* WARNING: this must be the last function that uses im, because thumbnail closes im: */
-	if (thumbnail (im, format, &thumbnail_data, &thumbnail_size)) {
+	if (thumbnail (reader, im, format, &thumbnail_data, &thumbnail_size)) {
 		g_debug ("Thumbnail is %d bytes", thumbnail_size);
 		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
 		g_byte_array_append (thumbnail_array, thumbnail_data, thumbnail_size);
@@ -387,9 +378,6 @@ static void photo_meta_reader_vips_class_init (PhotoMetaReaderVipsClass *klass)
 	PhotoMetaReaderClass *photo_meta_reader = PHOTO_META_READER_CLASS (klass);
 
 	/* g_type_class_add_private (klass, sizeof (PhotoMetaReaderVipsPrivate)); */
-
-	gobject_class->set_property = photo_meta_reader_vips_set_property;
-	gobject_class->get_property = photo_meta_reader_vips_get_property;
 
         photo_meta_reader->read = photo_meta_reader_vips_read;
 	photo_meta_reader->get_option_group = photo_meta_reader_vips_get_option_group;
