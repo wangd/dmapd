@@ -463,10 +463,12 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, gpointer reader)
 		if (stat (path, &buf) == -1) {
 			g_warning ("Unable to determine size of %s", path);
 		} else {
-			record->priv->filesize = (guint64) buf.st_size;
-			/* FIXME: This crashes on powerpc-440fp-linux-gnu:
-			 * g_debug ("Set filesize to %." G_GUINT64_FORMAT, record->priv->filesize);
-			 */
+			g_object_set (record,
+			             "filesize",
+				     (guint64) buf.st_size,
+				     "mtime",
+				     (guint64) buf.st_mtime,
+				      NULL);
 		}
 
 		location = g_filename_to_uri (path, NULL, NULL);
@@ -479,6 +481,8 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, gpointer reader)
 		g_object_set (record, "songgenre",   unknown,  NULL);
 		g_object_set (record, "format",      unknown,  NULL);
 		g_object_set (record, "mediakind",   DMAP_MEDIA_KIND_MUSIC, NULL);
+		g_object_set (record, "year",        1985, NULL);
+		g_object_set (record, "disc",        1);
 
 		g_free (location);
 		g_free (title);
@@ -486,11 +490,8 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, gpointer reader)
 		av_meta_reader_read (AV_META_READER (reader), DAAP_RECORD (record), path);
 
 		record->priv->rating = 5;	/* FIXME */
-		record->priv->year = 1984;	/* FIXME */
 		record->priv->firstseen = 1;	/* FIXME */
-		record->priv->mtime = 1;	/* FIXME */
-		record->priv->disc = 1;		/* FIXME */
-		record->priv->bitrate = 128;	/* FIXME */
+		record->priv->bitrate = 128;	/* FIXME, from codec decoder */
 	}
 
 	return record;

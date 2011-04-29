@@ -46,3 +46,27 @@ NOTE: stress test driver
 
 	3. Iterates through all protocol requests, request each database
 	item and some invalid items
+
+Tests that could be automated:
+
+	Handle invalid cache blob without problem
+
+	Don't thumbnail progressive image
+
+	Read EXIF thumbnail
+
+	Further shrink EXIF thumbnails that are too large
+
+	Max thumbnail and other arguments work
+
+	No permission on media file
+
+	No permission on directory
+
+	Don't load non-media into DB
+
+	Don't try to transcode non-media or files we can't transcode (no 0-size transcode)
+
+	Test each module
+
+	Unit tests	

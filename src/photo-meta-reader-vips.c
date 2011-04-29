@@ -185,6 +185,7 @@ thumbnail( PhotoMetaReader *reader, IMAGE *in, VipsFormatClass *format, void **t
 	IMAGE *out;
 	int multiscan;
 	gchar *thumbpath;
+	gchar *tmpfile = NULL;
 	GError *error = NULL;
 	gboolean got_thumb = FALSE;
 
@@ -205,13 +206,32 @@ thumbnail( PhotoMetaReader *reader, IMAGE *in, VipsFormatClass *format, void **t
 				g_warning ("Failed to read EXIF thumbnail %s: %s", in->filename, im_error_buffer ());
 				im_error_clear ();
 			} else {
-				*thumb = g_new (gchar, *size);
-
-				memcpy (*thumb, ptr, *size);
+				// FIXME: Can VIPS do this in memory without disk IO?
 
 				g_debug ("Read EXIF thumbnail of size %lu", *size);
-				got_thumb = TRUE;
-				goto _done_no_out;
+
+				if ((fd = g_file_open_tmp ("photo-meta-reader-vips-XXXXXX.jpg", &tmpfile, &error)) == -1) {
+					g_warning ("Unable to open temporary file for thumbnail: %s", error->message);
+					goto _done_no_out;
+				}
+
+				close (fd);
+
+				if (! g_file_set_contents (tmpfile, ptr, *size, &error)) {
+					g_warning ("Unable to write to temporary file for thumbnail: %s", error->message);
+					g_free(tmpfile);
+					goto _done_no_out;
+				}
+
+				// Close old in and process EXIF thumbnail (tmpfile) instead (may need to shrink more)
+				im_close( in ); 
+				if( !(in = im_open( tmpfile, "rd" )) ) {
+					g_warning ("Could not open %s", tmpfile);
+					g_free(tmpfile);
+					goto _done_no_out;
+				}
+
+				g_free(tmpfile);
 			}
 		}
 
@@ -263,6 +283,7 @@ thumbnail( PhotoMetaReader *reader, IMAGE *in, VipsFormatClass *format, void **t
 	}
 
 	g_unlink(thumbpath);
+	g_unlink(tmpfile);
 	g_free(thumbpath);
 
 _done:
@@ -341,7 +362,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 
 	/* FIXME: Also, exif-Date and Time looks like "2007:10:05 00:20:26 (ASCII, 20 bytes)" */
 	/* FIXME: also read from meta-data: */
-	g_object_set (record, "creation-date", 1, NULL);
+	g_object_set (record, "creation-date", 1, NULL); // Use g_date_strftime
 	g_object_set (record, "rating", 5, NULL);
 
 	/* WARNING: this must be the last function that uses im, because thumbnail closes im: */

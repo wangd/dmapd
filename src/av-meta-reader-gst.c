@@ -163,6 +163,28 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 			g_object_set (record, "songartist", val, NULL);
 		} else if (! strcmp ("album", tag)) {
 			g_object_set (record, "songalbum", val, NULL);
+		} else if (! strcmp ("disc-number", tag)) {
+			errno = 0;
+			long disc = strtol (val, NULL, 10);
+			if (! errno) {
+				g_object_set (record, "disc", val, NULL);
+			} else {
+				g_warning ("Error parsing disc: %s", val);
+			}
+		} else if (! strcmp ("date", tag)) {
+			// val should be "1985-01-01."
+			if (strlen (val) < 4) {
+				g_warning ("Error parsing date: %s", val);
+			} else {
+				val[4] = 0x00;
+				errno = 0;
+				long year = strtol (val, NULL, 10);
+				if (! errno) {
+					g_object_set (record, "year", year, NULL);
+				} else {
+					g_warning ("Error parsing year: %s", val);
+				}
+			}
 		} else if (! strcmp ("genre", tag)) {
 			g_object_set (record, "songgenre", val, NULL);
 		} else if (! strcmp ("audio-codec", tag)) {
