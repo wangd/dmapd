@@ -238,17 +238,17 @@ dmapd_dpap_record_set_from_blob (DMAPRecord *_record, GByteArray *blob)
 	g_object_set (record, "filename", (char *) ptr, NULL);
 	ptr += strlen ((char *) ptr) + 1;
 
-	/* FIXME: use g_object_set: */
 	size = *((guint *) ptr);
 	ptr += sizeof (size);
 
-	/* FIXME: use g_object_set?: */
 	if (size) {
-		record->priv->thumbnail = g_byte_array_sized_new (size);
-		g_byte_array_append (record->priv->thumbnail, ptr, size);
+		GByteArray *thumbnail_array = g_byte_array_sized_new (size);
+		g_byte_array_append (thumbnail_array, ptr, size);
+		g_object_set (record, "thumbnail", thumbnail_array, NULL);
+		g_byte_array_unref (thumbnail_array);
 		ptr += size;
 	} else {
-		record->priv->thumbnail = NULL;
+		g_object_set (record, "thumbnail", NULL, NULL);
 	}
 
 	g_object_set (record, "aspect-ratio", (char *) ptr, NULL);
