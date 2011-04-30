@@ -22,6 +22,7 @@
 #define __DMAPD_DAAP_RECORD
 
 #include <libdmapsharing/dmap.h>
+#include <av-meta-reader.h>
 
 G_BEGIN_DECLS
 
@@ -46,10 +47,8 @@ typedef struct {
 
 GType dmapd_daap_record_get_type (void);
 
-DmapdDAAPRecord *dmapd_daap_record_new (const char *location, gpointer reader);
 
-/* FIXME: Should take AVMetaReader, but we have #include loop. */
-DmapdDAAPRecord *dmapd_daap_record_new (const char *location, gpointer reader);
+DmapdDAAPRecord *dmapd_daap_record_new (const char *location, AVMetaReader *reader);
 
 gint          dmapd_daap_record_get_id          (DAAPRecord *record);
 

@@ -33,7 +33,7 @@ struct DmapdDAAPRecordPrivate {
 	guint64 filesize;
 	char *location;
 	const char *format;	 	/* Format, possibly after transcoding. */
-	gint mediakind;			/* FIXME: actually enum. */
+	gint mediakind;
 	char *title;
 	const char *album;
 	const char *sort_album;
@@ -97,9 +97,7 @@ dmapd_daap_record_set_property (GObject *object,
 			break;
 		case PROP_SORT_ALBUM:
 			stringleton_unref (record->priv->sort_album);
-			// FIXME: This should be used, but g_value_get_string(value) can be NULL
-			// record->priv->sort_artist = stringleton_ref (g_value_get_string(value));
-			record->priv->sort_album = g_value_get_string(value);
+			record->priv->sort_album = value ? stringleton_ref (g_value_get_string(value)) : value;
 			break;
 		case PROP_ARTIST:
 			stringleton_unref (record->priv->artist);
@@ -107,9 +105,7 @@ dmapd_daap_record_set_property (GObject *object,
 			break;
 		case PROP_SORT_ARTIST:
 			stringleton_unref (record->priv->sort_artist);
-			// FIXME: This should be used, but g_value_get_string(value) can be NULL
-			// record->priv->sort_artist = stringleton_ref (g_value_get_string(value));
-			record->priv->sort_artist = g_value_get_string(value);
+			record->priv->sort_artist = value ? stringleton_ref (g_value_get_string(value)) : value;
 			break;
 		case PROP_GENRE:
 			stringleton_unref (record->priv->genre);
@@ -450,8 +446,7 @@ dmapd_daap_record_finalize (GObject *object)
 	G_OBJECT_CLASS (dmapd_daap_record_parent_class)->finalize (object);
 }
 
-/* See FIXME in header file: */
-DmapdDAAPRecord *dmapd_daap_record_new (const char *path, gpointer reader)
+DmapdDAAPRecord *dmapd_daap_record_new (const char *path, AVMetaReader *reader)
 {
 	DmapdDAAPRecord *record = NULL;
 	struct stat buf;
