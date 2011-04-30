@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <math.h>
+#include <errno.h>
 #include <string.h>
 #include <vips/vips.h>
 
@@ -206,7 +206,7 @@ thumbnail( PhotoMetaReader *reader, IMAGE *in, VipsFormatClass *format, void **t
 				g_warning ("Failed to read EXIF thumbnail %s: %s", in->filename, im_error_buffer ());
 				im_error_clear ();
 			} else {
-				// FIXME: Can VIPS do this in memory without disk IO?
+				// FIXME: New VIPS can do this in memory without disk IO.
 
 				g_debug ("Read EXIF thumbnail of size %lu", *size);
 
@@ -308,7 +308,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	struct stat buf;
 	gchar *aspect_ratio_str;
 	gchar *location;
-	gchar *comments;
+	gchar *exif_str;
 	GByteArray *thumbnail_array = NULL;
 	void *thumbnail_data = NULL;
 	gsize  thumbnail_size = 0;
@@ -352,17 +352,42 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader,
 	g_free (aspect_ratio_str);
 
 	if (im_header_get_typeof (im, "exif-User Comment")) {
-		if (im_meta_get_string (im, "exif-User Comment", &comments)) {
+		if (im_meta_get_string (im, "exif-User Comment", &exif_str)) {
 			g_warning ("Failed to read comments from %s: %s", im->filename, im_error_buffer ());
 			im_error_clear ();
 		} else {
-			g_object_set (record, "comments", comments, NULL);
+			g_object_set (record, "comments", exif_str, NULL);
 		}
 	}
 
-	/* FIXME: Also, exif-Date and Time looks like "2007:10:05 00:20:26 (ASCII, 20 bytes)" */
+	if (im_header_get_typeof (im, "exif-Date and Time")) {
+		if (im_meta_get_string (im, "exif-Date and Time", &exif_str)) {
+			g_warning ("Failed to read timestamp from %s: %s", im->filename, im_error_buffer ());
+			im_error_clear ();
+		} else {
+			// Format is: "2007:10:05 00:20:26 (ASCII, 20 bytes)".
+			long l, timestamp;
+
+			if (strlen (exif_str) < 19) {
+				g_warning ("Bad timestamp string in %s: %s", im->filename, exif_str);
+			} else {
+				exif_str[4] = 0x00; // Cut off year.
+				errno = 0;
+				l = strtol (exif_str, NULL, 10);
+				if (errno) {
+					g_warning ("Bad timestamp string in %s: %s", im->filename, exif_str);
+				}
+				// FIXME: Handle other than year!
+				timestamp = (l - 1970) * 365 * 24 * 60 * 60;
+
+				g_object_set (record, "creation-date", timestamp, NULL);
+			}
+		}
+	} else {
+		g_object_set (record, "creation-date", buf.st_mtime, NULL);
+	}
+
 	/* FIXME: also read from meta-data: */
-	g_object_set (record, "creation-date", 1, NULL); // Use g_date_strftime
 	g_object_set (record, "rating", 5, NULL);
 
 	/* WARNING: this must be the last function that uses im, because thumbnail closes im: */
