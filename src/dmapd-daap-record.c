@@ -477,7 +477,7 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, AVMetaReader *reader)
 		g_object_set (record, "format",      unknown,  NULL);
 		g_object_set (record, "mediakind",   DMAP_MEDIA_KIND_MUSIC, NULL);
 		g_object_set (record, "year",        1985, NULL);
-		g_object_set (record, "disc",        1);
+		g_object_set (record, "disc",        1, NULL);
 
 		g_free (location);
 		g_free (title);

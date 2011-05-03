@@ -1,5 +1,11 @@
 = Short term ===================================================================
 
+Mike: temporary, thumbnail files remain
+
+Mike: crashes when you specify -m on a big picture directory?
+
+Mike: Mac OS memory blows up when interacting with WalletPhoto
+
 Noah: write unit tests
 
 Mike: fix: video playlist override audio playlists when both directories
