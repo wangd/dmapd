@@ -157,7 +157,8 @@ PKG_CHECK_MODULES(VIPS, vips-7.24 >= 7.24.1,
   HAVE_VIPS=no)
 
 if test x"$HAVE_VIPS" = "xyes"; then
-  AC_DEFINE(HAVE_VIPS, 1, [Define if vips support is enabled])
+  AC_DEFINE(HAVE_VIPS, 1, [Define if VIPS support is enabled])
+  AC_CHECK_LIB(vips, im_bufjpeg2vips, AC_DEFINE(HAVE_VIPS_BUFJPEG2VIPS, 1, [Define if VIPS supports im_bufjpeg2vips]))
 fi
 
 AM_CONDITIONAL(USE_VIPS, test x"$HAVE_VIPS" = "xyes")

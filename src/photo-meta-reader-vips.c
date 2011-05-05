@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
+#include <math.h>
 #include <errno.h>
 #include <string.h>
 #include <vips/vips.h>
@@ -206,63 +208,54 @@ thumbnail( PhotoMetaReader *reader, IMAGE *in, VipsFormatClass *format, void **t
 				g_warning ("Failed to read EXIF thumbnail %s: %s", in->filename, im_error_buffer ());
 				im_error_clear ();
 			} else {
-				// FIXME: New VIPS can do this in memory without disk IO.
-
+#ifdef HAVE_VIPS_BUFJPEG2VIPS
+				IMAGE *tmp;
 				g_debug ("Read EXIF thumbnail of size %lu", *size);
 
-				if ((fd = g_file_open_tmp ("photo-meta-reader-vips-XXXXXX.jpg", &tmpfile, &error)) == -1) {
-					g_warning ("Unable to open temporary file for thumbnail: %s", error->message);
+				// Close old in and process EXIF thumbnail instead (may need to shrink more)
+				if (! (tmp = im_open("thumb", "t")) || im_bufjpeg2vips(ptr, *size, tmp)) {
+					g_warning ("Could not open existing thumbnail: %s", im_error_buffer());
 					goto _done_no_out;
 				}
-
-				close (fd);
-
-				if (! g_file_set_contents (tmpfile, ptr, *size, &error)) {
-					g_warning ("Unable to write to temporary file for thumbnail: %s", error->message);
-					g_free(tmpfile);
-					goto _done_no_out;
-				}
-
-				// Close old in and process EXIF thumbnail (tmpfile) instead (may need to shrink more)
 				im_close( in ); 
-				if( !(in = im_open( tmpfile, "rd" )) ) {
-					g_warning ("Could not open %s", tmpfile);
-					g_free(tmpfile);
+				in = tmp;
+#else
+				g_warning ("Will not shrink existing thumbnail; no im_bufjpeg2vips support in VIPS");
+#endif /* HAVE_VIPS_BUFJPEG2VIPS */
+			}
+		} else {
+
+			if (im_header_get_typeof (in, "jpeg-multiscan")) {
+				if (im_header_int (in, "jpeg-multiscan", &multiscan)) {
+					g_warning ("Failed to determine if %s multiscan: %s", in->filename, im_error_buffer ());
+					im_error_clear ();
 					goto _done_no_out;
 				}
-
-				g_free(tmpfile);
+				if (multiscan) {
+					g_warning ("Will not try to thumbnail multiscan JPEG at %s", in->filename);
+					goto _done_no_out;
+				}
 			}
-		}
 
-		if (im_header_get_typeof (in, "jpeg-multiscan")) {
-			if (im_header_int (in, "jpeg-multiscan", &multiscan)) {
-				g_warning ("Failed to determine if %s multiscan: %s", in->filename, im_error_buffer ());
-				im_error_clear ();
+			shrink = calculate_shrink( reader, in->Xsize, in->Ysize, NULL );
+
+			if( shrink > 8 )
+				shrink = 8;
+			else if( shrink > 4 )
+				shrink = 4;
+			else if( shrink > 2 )
+				shrink = 2;
+			else 
+				shrink = 1;
+
+			im_snprintf( buf, FILENAME_MAX, "%s:%d", in->filename, shrink );
+			g_debug ("Opening %s:%d", in->filename, shrink);
+			im_close( in );
+			if( !(in = im_open( buf, "rd" )) ) {
+				g_warning ("Could not open %s", buf);
 				goto _done_no_out;
 			}
-			if (multiscan) {
-				g_warning ("Will not try to thumbnail multiscan JPEG at %s", in->filename);
-				goto _done_no_out;
-			}
 		}
-
-		shrink = calculate_shrink( reader, in->Xsize, in->Ysize, NULL );
-
-		if( shrink > 8 )
-			shrink = 8;
-		else if( shrink > 4 )
-			shrink = 4;
-		else if( shrink > 2 )
-			shrink = 2;
-		else 
-			shrink = 1;
-
-		im_snprintf( buf, FILENAME_MAX, "%s:%d", in->filename, shrink );
-		g_debug ("Opening %s:%d", in->filename, shrink);
-		im_close( in );
-		if( !(in = im_open( buf, "rd" )) )
-			goto _done_no_out;
 	}
 
 	if ((fd = g_file_open_tmp ("photo-meta-reader-vips-XXXXXX.jpg", &thumbpath, &error)) == -1) {
