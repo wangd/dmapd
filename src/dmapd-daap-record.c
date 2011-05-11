@@ -116,7 +116,7 @@ dmapd_daap_record_set_property (GObject *object,
 			record->priv->format = stringleton_ref (g_value_get_string(value));
 			break;
 		case PROP_MEDIAKIND:
-			record->priv->mediakind = g_value_get_int (value);
+			record->priv->mediakind = g_value_get_enum (value);
 			break;
 		case PROP_RATING:
 			record->priv->rating = g_value_get_int (value);
@@ -190,7 +190,7 @@ dmapd_daap_record_get_property (GObject *object,
 			g_value_set_static_string (value, record->priv->format);
 			break;
 		case PROP_MEDIAKIND:
-			g_value_set_int (value, record->priv->mediakind);
+			g_value_set_enum (value, record->priv->mediakind);
 			break;
 		case PROP_RATING:
 			g_value_set_int (value, record->priv->rating);

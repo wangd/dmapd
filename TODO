@@ -1,3 +1,17 @@
+= AirPlay ======================================================================
+
+Create a new module, av-output.c and av-output-gst.c
+
+	Implement DACPPlayer interface.
+
+	Handle DMAP_AV_OUTPUT_MODULE=gst:apexsink,host=foo,port=bar,generati...
+
+	Support play, pause, volume, etc.
+
+Move, e.g., DMAP_AV_MODULE to DMAP_AV_META_READER? Update documentation.
+
+DACP integration.
+
 = Short term ===================================================================
 
 Mike: temporary, thumbnail files remain
