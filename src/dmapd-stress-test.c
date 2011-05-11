@@ -26,6 +26,7 @@
 
 #include <libdmapsharing/dmap.h>
 
+#include "util.h"
 #include "dmapd-dmap-db-ghashtable.h"
 #include "dmapd-daap-record-factory.h"
 #include "dmapd-dpap-record-factory.h"

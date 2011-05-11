@@ -24,6 +24,7 @@
 #include <math.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include <vips/vips.h>
 
 #include "photo-meta-reader-vips.h"
@@ -302,7 +303,6 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 	g_unlink (tmpfile);
 	g_free (thumbpath);
 
-      _done:
 	im_close (out);
 
       _done_no_out:
@@ -319,7 +319,6 @@ photo_meta_reader_vips_read (PhotoMetaReader * reader,
 	int x, y;
 	gboolean fnval = FALSE;
 	VipsFormatClass *format;
-	GError *error = NULL;
 	struct stat buf;
 	gchar *aspect_ratio_str;
 	gchar *location;
@@ -414,7 +413,7 @@ photo_meta_reader_vips_read (PhotoMetaReader * reader,
 
 	/* WARNING: this must be the last function that uses im, because thumbnail closes im: */
 	if (thumbnail (reader, im, format, &thumbnail_data, &thumbnail_size)) {
-		g_debug ("Thumbnail is %d bytes", thumbnail_size);
+		g_debug ("Thumbnail is %ld bytes", thumbnail_size);
 		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
 		g_byte_array_append (thumbnail_array, thumbnail_data,
 				     thumbnail_size);
@@ -445,7 +444,6 @@ photo_meta_reader_vips_init (PhotoMetaReaderVips * reader)
 static void
 photo_meta_reader_vips_class_init (PhotoMetaReaderVipsClass * klass)
 {
-	GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 	PhotoMetaReaderClass *photo_meta_reader =
 		PHOTO_META_READER_CLASS (klass);
 

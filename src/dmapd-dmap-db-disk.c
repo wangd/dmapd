@@ -85,7 +85,7 @@ load_cached_record (const DMAPDb *db, const gchar *db_dir, guchar *hash, DMAPRec
 static DMAPRecord *
 dmapd_dmap_db_disk_lookup_by_id	(const DMAPDb *db, guint id)
 {
-	gchar *hash = NULL;
+	guchar *hash = NULL;
 	gchar *db_dir = NULL;
 	DMAPRecord *record = NULL;
 	DMAPRecordFactory *factory = NULL;

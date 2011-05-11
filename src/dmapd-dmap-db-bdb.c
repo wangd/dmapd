@@ -83,7 +83,7 @@ dmapd_dmap_db_bdb_lookup_id_by_location (const DMAPDb *db, const gchar *location
 	/* id == 0 indicates rollover! */
 	// NOTE: this should be = G_MAXUINT, not G_MAXINT, but iPhoto can't handle full range of guint:
 	for (id = G_MAXINT; id > nextid && ! found; id--) {
-		const gchar *_location = NULL;
+		gchar *_location = NULL;
 		DMAPRecord *record = dmapd_dmap_db_bdb_lookup_by_id (db, id);
 		if (record) {
 			g_object_get (record, "location", &_location, NULL);

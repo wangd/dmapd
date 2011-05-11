@@ -71,10 +71,10 @@ photo_meta_reader_graphicsmagick_read (PhotoMetaReader *reader,
 	if (! MagickReadImage (wand, path)) {
 		g_warning ("Could not read %s", path);
 	} else {
-		ExifData *d;
+		//ExifData *d;
 		struct stat buf;
 		size_t thumbnail_size;
-		char *thumbnail_data;
+		guchar *thumbnail_data;
 		GByteArray *thumbnail_array;
 		float aspect_ratio;
 		gchar *aspect_ratio_str;
@@ -194,11 +194,13 @@ G_MODULE_EXPORT gboolean
 dmapd_module_load (GTypeModule *module)
 {
         photo_meta_reader_graphicsmagick_register_type (module);
+	return TRUE;
 }
 
 G_MODULE_EXPORT gboolean
 dmapd_module_unload (GTypeModule *module)
 {
+	return FALSE;
 }
 
 G_DEFINE_DYNAMIC_TYPE (PhotoMetaReaderGraphicsmagick,

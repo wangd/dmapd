@@ -99,3 +99,14 @@ START_TEST(test_dmapd_daap_record_add_lookup)
 	g_object_unref (factory);
 }
 END_TEST
+
+Suite *dmapd_test_daap_record_suite(void)
+{
+        Suite *s = suite_create("dmapd-test-daap-record");
+
+	TCase *tc_dmapd_daap_record_add_lookup = tcase_create("test_dmapd_daap_record_add_lookup");
+	tcase_add_test(tc_dmapd_daap_record_add_lookup, test_dmapd_daap_record_add_lookup);
+	suite_add_tcase(s, tc_dmapd_daap_record_add_lookup);
+
+	return s;
+}

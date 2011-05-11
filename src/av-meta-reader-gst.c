@@ -21,6 +21,7 @@
 #include <string.h>
 #include <gst/gst.h>
 
+#include "util-gst.h"
 #include "dmapd-daap-record.h"
 #include "av-meta-reader-gst.h"
 
@@ -167,7 +168,7 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 			errno = 0;
 			long disc = strtol (val, NULL, 10);
 			if (! errno) {
-				g_object_set (record, "disc", val, NULL);
+				g_object_set (record, "disc", disc, NULL);
 			} else {
 				g_warning ("Error parsing disc: %s", val);
 			}
@@ -215,48 +216,6 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 		}
 		g_free (val);
 	}
-}
-
-static GstElement *
-setup_pipeline (const char *sinkname)
-{
-	GstElement *pipeline, *src, *decoder, *sink;
-
-	/* Set up pipeline. */
-	pipeline = gst_pipeline_new ("pipeline");
-
-	src = gst_element_factory_make ("filesrc", "src");
-	decoder = gst_element_factory_make ("decodebin", "decoder");
-	sink = gst_element_factory_make (sinkname, "sink");
-
-	if (pipeline == NULL || src == NULL || decoder == NULL || sink == NULL) {
-		g_warning ("Error creating a GStreamer pipeline");
-		goto _error;
-	}
-
-	gst_bin_add_many (GST_BIN (pipeline),
-			  src,
-			  decoder,
-			  sink,
-			  NULL);
-
-	if (gst_element_link (src, decoder) == FALSE) {
-		g_warning ("Error linking GStreamer pipeline");
-		goto _error;
-	}
-
-	g_debug ("Pipeline complete");
-	return pipeline;
-
-_error:
-	if (src != NULL)
-		g_object_unref (src);
-	if (decoder != NULL)
-		g_object_unref (decoder);
-	if (sink != NULL)
-		g_object_unref (sink);
-
-	return NULL;
 }
 
 static gboolean

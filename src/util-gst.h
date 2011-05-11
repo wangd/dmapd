@@ -1,8 +1,8 @@
-/*   FILE: dmapd-unit-test.c -- Unit tests
+/*   FILE: util-gst.h -- GStreamer utility functions
  * AUTHOR: W. Michael Petullo <mike@flyn.org>
- *   DATE: 01 January 2009 
+ *   DATE: 11 May 2011
  *
- * Copyright (c) 2009 W. Michael Petullo <new@flyn.org>
+ * Copyright (c) 2011 W. Michael Petullo <new@flyn.org>
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,31 +20,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <check.h>
+#ifndef __DMAPD_UTIL_GST
+#define __DMAPD_UTIL_GST
+
 #include <glib.h>
-#include <config.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <libdmapsharing/dmap.h>
+#include <gst/gst.h>
 
-#include "util.h"
-#include "dmapd-daap-record.h"
-#include "dmapd-daap-record-factory.h"
-#include "dmapd-dmap-db-bdb.h"
-#include "dmapd-test-daap-record.h"
+GstElement *setup_pipeline (const char *sinkname);
 
-int main(void)
-{
-	int nf;
-
-	g_type_init ();
-
-	Suite *s = dmapd_test_daap_record_suite();
-	SRunner *sr = srunner_create(s);
-	srunner_run_all(sr, CK_NORMAL);
-	nf = srunner_ntests_failed(sr);
-	srunner_free(sr);
-
-	return (nf == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
-}
+#endif

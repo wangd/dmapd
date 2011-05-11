@@ -37,7 +37,7 @@ dmapd_stress_test_LDADD = libdmapd.la
 if HAVE_CHECK
 dmapd_unit_test_SOURCES = \
 	dmapd-unit-test.c \
-	dmapd-test-daap-record-add-lookup.c
+	dmapd-test-daap-record.c
 
 dmapd_unit_test_LDADD = libdmapd.la @CHECK_LIBS@
 dmapd_unit_test_INCLUDES = @CHECK_CFLAGS@
@@ -48,6 +48,7 @@ lib_LTLIBRARIES = libdmapd.la
 libdmapd_la_SOURCES = \
 	util.c \
 	av-meta-reader.c \
+	av-render.c \
 	db-builder.c \
 	dmapd-dmap-container-db.c \
 	dmapd-dmap-container-record.c \
@@ -62,11 +63,7 @@ libdmapd_la_SOURCES = \
 
 libdmapd_la_LIBADD = \
 	$(DMAPSHARING_LIBS) \
-	$(GLIB_LIBS) \
-	$(GTHREAD_LIBS) \
-	$(GOBJECT_LIBS) \
-	$(AVAHI_LIBS) \
-	$(SOUP_LIBS)
+	$(GSTREAMER_LIBS)
 
 libdmapd_la_LDFLAGS = -version-info @VER_INFO@
 
@@ -81,8 +78,11 @@ plugin_LTLIBRARIES += \
 endif
 
 if USE_GSTREAMER
+libdmapd_la_SOURCES += util-gst.c
+
 plugin_LTLIBRARIES += \
-	libav-meta-reader-gst.la
+	libav-meta-reader-gst.la \
+	libav-render-gst.la
 
 libav_meta_reader_gst_la_SOURCES = \
 	av-meta-reader-gst.c
@@ -90,6 +90,14 @@ libav_meta_reader_gst_la_SOURCES = \
 libav_meta_reader_gst_la_LDFLAGS = $(MODULE_LIBTOOL_FLAGS)
 
 libav_meta_reader_gst_la_LIBADD = \
+	$(GSTREAMER_LIBS)
+
+libav_render_gst_la_SOURCES = \
+	av-render-gst.c
+
+libav_render_gst_la_LDFLAGS = $(MODULE_LIBTOOL_FLAGS)
+
+libav_render_gst_la_LIBADD = \
 	$(GSTREAMER_LIBS)
 endif
 
@@ -152,12 +160,14 @@ dmapdinclude_HEADERS = \
 	dmapd.h \
 	dmapd-dmap-db.h \
 	av-meta-reader.h \
+	av-render.h \
 	photo-meta-reader.h \
 	db-builder.h \
 	dmapd-module.h
 
 noinst_HEADERS = \
 	util.h \
+	util-gst.h \
 	dmapd-daap-record.h \
 	dmapd-dmap-container-db.h \
 	dmapd-dmap-container-record.h \
@@ -165,6 +175,7 @@ noinst_HEADERS = \
 	dmapd-dmap-db-disk.h \
 	dmapd-dmap-db-ghashtable.h \
 	av-meta-reader-gst.h \
+	av-render-gst.h \
 	photo-meta-reader-graphicsmagick.h \
 	photo-meta-reader-vips.h \
 	db-builder-gdir.h \
