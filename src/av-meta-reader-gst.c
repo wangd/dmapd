@@ -29,7 +29,7 @@ struct AVMetaReaderGstPrivate {
 	GMutex *tag_read;
 	GstElement *pipeline;
 	GstElement *src;
-	GstElement *decode;
+	GstElement *decoder;
 	GstElement *sink;
 	gboolean has_video;
 };
@@ -217,49 +217,46 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 	}
 }
 
-static gboolean
-setup_pipeline (AVMetaReaderGst *reader)
+static GstElement *
+setup_pipeline (const char *sinkname)
 {
-	/* Set up pipeline. */
-	reader->priv->pipeline = gst_pipeline_new ("pipeline");
+	GstElement *pipeline, *src, *decoder, *sink;
 
-	reader->priv->src = gst_element_factory_make      ("filesrc",
-							   "source");
-	reader->priv->decode = gst_element_factory_make   ("decodebin",
-							   "decoder");
-	reader->priv->sink = gst_element_factory_make ("fakesink",
-							   "fakesink");
-	if (reader->priv->src == NULL
-	    || reader->priv->decode == NULL
-	    || reader->priv->sink == NULL) {
-		g_warning ("Error creating a GStreamer element");
+	/* Set up pipeline. */
+	pipeline = gst_pipeline_new ("pipeline");
+
+	src = gst_element_factory_make ("filesrc", "src");
+	decoder = gst_element_factory_make ("decodebin", "decoder");
+	sink = gst_element_factory_make (sinkname, "sink");
+
+	if (pipeline == NULL || src == NULL || decoder == NULL || sink == NULL) {
+		g_warning ("Error creating a GStreamer pipeline");
 		goto _error;
 	}
 
-	gst_bin_add_many (GST_BIN (reader->priv->pipeline),
-			  reader->priv->src,
-			  reader->priv->decode,
-			  reader->priv->sink,
+	gst_bin_add_many (GST_BIN (pipeline),
+			  src,
+			  decoder,
+			  sink,
 			  NULL);
 
-	if (gst_element_link (reader->priv->src,
-			      reader->priv->decode) == FALSE) {
+	if (gst_element_link (src, decoder) == FALSE) {
 		g_warning ("Error linking GStreamer pipeline");
 		goto _error;
 	}
 
 	g_debug ("Pipeline complete");
-	return TRUE;
+	return pipeline;
 
 _error:
-	if (reader->priv->src != NULL)
-		g_object_unref (reader->priv->src);
-	if (reader->priv->decode != NULL)
-		g_object_unref (reader->priv->decode);
-	if (reader->priv->sink != NULL)
-		g_object_unref (reader->priv->sink);
+	if (src != NULL)
+		g_object_unref (src);
+	if (decoder != NULL)
+		g_object_unref (decoder);
+	if (sink != NULL)
+		g_object_unref (sink);
 
-	return FALSE;
+	return NULL;
 }
 
 static gboolean
@@ -371,7 +368,7 @@ static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
 {
 	reader->priv->pipeline = NULL;
 	reader->priv->src = NULL;
-	reader->priv->decode = NULL;
+	reader->priv->decoder = NULL;
 	reader->priv->sink = NULL;
 	reader->priv->has_video = FALSE;
 }
@@ -388,18 +385,27 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 
 	g_debug("Looking at %s", path);
 
-	if (! setup_pipeline (gst_reader))
+	if (! (gst_reader->priv->pipeline = setup_pipeline ("fakesink")))
+		goto _return;
+
+	gst_reader->priv->src     = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "src");
+	gst_reader->priv->decoder = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "decoder");
+	gst_reader->priv->sink    = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "sink");
+	
+	if (gst_reader->priv->src == NULL
+	 || gst_reader->priv->decoder == NULL
+	 || gst_reader->priv->sink == NULL)
 		goto _return;
 
 	g_object_set (G_OBJECT (gst_reader->priv->src), "location", path, NULL);
 
 	/* Connect callback to identify audio and/or video tracks. */
-	g_signal_connect (gst_reader->priv->decode,
+	g_signal_connect (gst_reader->priv->decoder,
 			  "new-decoded-pad",
 			  G_CALLBACK (new_decoded_pad_cb),
 			  gst_reader->priv);
 
-	g_signal_connect (gst_reader->priv->decode,
+	g_signal_connect (gst_reader->priv->decoder,
 			  "no-more-pads",
 			  G_CALLBACK (no_more_pads_cb),
 			  gst_reader->priv->loop);
