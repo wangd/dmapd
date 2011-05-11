@@ -152,13 +152,13 @@ create_connection (const DMAPMdnsBrowserServiceType protocol,
 		if (factory == NULL) {
 			g_error ("Error creating record factory");
 		}
-		conn = DMAP_CONNECTION (daap_connection_new (name, host, port, FALSE, db, factory));
+		conn = DMAP_CONNECTION (daap_connection_new (name, host, port, db, factory));
 	} else {
 		factory = DMAP_RECORD_FACTORY (g_object_new (TYPE_DMAPD_DPAP_RECORD_FACTORY, NULL));
 		if (factory == NULL) {
 			g_error ("Error creating record factory");
 		}
-		conn = DMAP_CONNECTION (dpap_connection_new (name, host, port, FALSE, db, factory));
+		conn = DMAP_CONNECTION (dpap_connection_new (name, host, port, db, factory));
 	}
 	dmap_connection_connect (DMAP_CONNECTION (conn), (DMAPConnectionCallback) connected_cb, db);
 }
