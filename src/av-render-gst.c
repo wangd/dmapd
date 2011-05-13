@@ -35,8 +35,6 @@ struct AVRenderGstPrivate {
 
 	GList *song_list;	// Songs to play.
 	GList *song_current;	// Song currently playing.
-
-	DMAPDb *db;
 };
 
 enum {
@@ -45,8 +43,7 @@ enum {
 	PROP_SHUFFLE_STATE,
 	PROP_REPEAT_STATE,
 	PROP_PLAY_STATE,
-	PROP_VOLUME,
-	PROP_DB
+	PROP_VOLUME
 };
 
 DAAPRecord *
@@ -392,9 +389,6 @@ av_render_gst_get_property (GObject *object,
                 case PROP_VOLUME:
 			g_error ("get prop");
                         break;
-		case PROP_DB:
-			g_value_set_pointer (value, render->priv->db);
-			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                         break;
@@ -422,9 +416,6 @@ av_render_gst_set_property (GObject *object,
                 case PROP_VOLUME:
 			g_error ("set prop");
                         break;
-		case PROP_DB:
-			render->priv->db = (DMAPDb *) g_value_get_pointer (value);
-			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                         break;
@@ -458,19 +449,6 @@ av_render_gst_class_init (AVRenderGstClass *klass)
 	g_object_class_override_property (gobject_class, PROP_REPEAT_STATE, "repeat-state");
 	g_object_class_override_property (gobject_class, PROP_PLAY_STATE, "play-state");
 	g_object_class_override_property (gobject_class, PROP_VOLUME, "volume");
-
-	/* NOTE: It would be nice if this property were constructor-only. However, 
-	 * this object provides the get_option_group method that must be callable 
-	 * before command line arguments are parsed. Because it is unlikely
-	 * that a database is available before the command line arguements
-	 * are parsed (an argument might specify a database location),
-	 * the database may not be available at constructor time.
-	 */
-	g_object_class_install_property (gobject_class,
-		PROP_DB, g_param_spec_pointer ("db",
-		                               "DB",
-					       "DB object",
-					        G_PARAM_READWRITE));
 }
 
 G_DEFINE_DYNAMIC_TYPE (AVRenderGst,
