@@ -56,7 +56,11 @@ av_meta_reader_gst_get_property (GObject *object,
 static GOptionGroup *
 av_meta_reader_gst_get_option_group (AVMetaReader *reader)
 {
-        return gst_init_get_option_group ();
+	if (gst_is_initialized ()) {
+		return NULL;
+	} else {
+		return gst_init_get_option_group ();
+	}
 }
 
 static void

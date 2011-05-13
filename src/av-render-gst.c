@@ -325,7 +325,11 @@ _return:
 
 GOptionGroup *av_render_gst_get_option_group (AVRender *render)
 {
-	return gst_init_get_option_group ();
+	if (gst_is_initialized ()) {
+		return NULL;
+	} else {
+		return gst_init_get_option_group ();
+	}
 }
 
 static void av_render_gst_register_type (GTypeModule *module);
