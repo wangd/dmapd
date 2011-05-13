@@ -459,11 +459,18 @@ av_render_gst_class_init (AVRenderGstClass *klass)
 	g_object_class_override_property (gobject_class, PROP_PLAY_STATE, "play-state");
 	g_object_class_override_property (gobject_class, PROP_VOLUME, "volume");
 
+	/* NOTE: It would be nice if this property were constructor-only. However, 
+	 * this object provides the get_option_group method that must be callable 
+	 * before command line arguments are parsed. Because it is unlikely
+	 * that a database is available before the command line arguements
+	 * are parsed (an argument might specify a database location),
+	 * the database may not be available at constructor time.
+	 */
 	g_object_class_install_property (gobject_class,
 		PROP_DB, g_param_spec_pointer ("db",
 		                               "DB",
 					       "DB object",
-					        G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+					        G_PARAM_READWRITE));
 }
 
 G_DEFINE_DYNAMIC_TYPE (AVRenderGst,
