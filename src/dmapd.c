@@ -450,6 +450,7 @@ int main (int argc, char *argv[])
 	GError *error = NULL;
 	GOptionContext *context;
 	AVMetaReader *av_meta_reader = NULL;
+	AVRender *av_render = NULL;
 	PhotoMetaReader *photo_meta_reader = NULL;
 
 	DMAPShare *share[2] = { NULL, NULL };
@@ -488,6 +489,16 @@ int main (int argc, char *argv[])
 		av_meta_reader = AV_META_READER (object_from_module (TYPE_AV_META_READER, av_meta_reader_module, NULL));
 		if (av_meta_reader) {
 			group = av_meta_reader_get_option_group (av_meta_reader);
+			if (group)
+				g_option_context_add_group (context, group);
+		}
+	}
+
+	if (strcmp (av_render_module, "null") != 0) {
+		GOptionGroup *group;
+		av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER, av_render_module, NULL));
+		if (av_render) {
+			group = av_render_get_option_group (av_render);
 			if (group)
 				g_option_context_add_group (context, group);
 		}
@@ -581,31 +592,13 @@ int main (int argc, char *argv[])
 #endif
 	}
 
-	// FIXME: where should this go? Need DB, but also need to call g_option_context_add_group.
-	AVRender *av_render = NULL;
-	if (share[DAAP] && strcmp (av_render_module, "null") != 0) { // FIXME decompose server to support AirPlay w/o DAAP?
-		//GOptionGroup *group;
-		// FIXME:
-		DMAPDb *db;
+	GList *list = NULL;
+	DMAPDb *db;
+	if (share[DAAP]) {
 		g_object_get (share[DAAP], "db", &db, NULL);
-		g_assert (db);
-		av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER,
-							   av_render_module,
-							   "db",
-							   g_object_ref (db), // Ref, right?
-							   NULL));
-		if (av_render) {
-			//group = av_render_get_option_group (av_render);
-			//if (group)
-			//	g_option_context_add_group (context, group);
-		}
-
-		GList *list = NULL;
 		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT));
 		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT - 1));
 		dacp_player_cue_play(DACP_PLAYER (av_render), list, 0);
-		//dacp_player_play_pause (DACP_PLAYER (av_render));
-		// FIXME: end where should this go?
 	}
 
 	g_main_loop_run (loop);

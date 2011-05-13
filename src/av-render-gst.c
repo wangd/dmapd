@@ -371,8 +371,6 @@ av_render_gst_get_property (GObject *object,
                         GValue *value,
                         GParamSpec *pspec)
 {
-	AVRenderGst *render = AV_RENDER_GST (object);
-
         switch (prop_id) {
                 case PROP_PLAYING_TIME:
 			g_error ("get prop");
@@ -401,8 +399,6 @@ av_render_gst_set_property (GObject *object,
                         const GValue *value,
                         GParamSpec *pspec)
 {
-	AVRenderGst *render = AV_RENDER_GST (object);
-
         switch (prop_id) {
                 case PROP_PLAYING_TIME:
 			g_error ("set prop");
