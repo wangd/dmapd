@@ -219,29 +219,6 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 }
 
 static gboolean
-transition_pipeline (GstElement *pipeline, GstState state)
-{
-	gboolean fnval = TRUE;
-	GstStateChangeReturn sret;
-
-	sret = gst_element_set_state (GST_ELEMENT (pipeline), state);
-	if (GST_STATE_CHANGE_ASYNC == sret) {
-		if (GST_STATE_CHANGE_SUCCESS != gst_element_get_state
-				(GST_ELEMENT (pipeline),
-				 &state,
-				 NULL,
-				 1 * GST_SECOND)) {
-			g_warning ("State change failed");
-			fnval = FALSE;
-		}
-	} else if (sret != GST_STATE_CHANGE_SUCCESS) {
-		g_warning ("Could not read file");
-		fnval = FALSE;
-	}
-	return fnval;
-}
-
-static gboolean
 pause_pipeline (GstElement *pipeline)
 {
 	transition_pipeline (pipeline, GST_STATE_PAUSED);
@@ -263,25 +240,6 @@ static void
 no_more_pads_cb (GstElement *element, GMainLoop *loop)
 {
 	quit_mainloop (loop);	
-}
-
-/* FIXME: copied from libdmapsharing: */
-gboolean
-pads_compatible (GstPad *pad1, GstPad *pad2)
-{
-        gboolean fnval;
-        GstCaps *res, *caps1, *caps2;
-
-        caps1 = gst_pad_get_caps (pad1);
-        caps2 = gst_pad_get_caps (pad2);
-        res = gst_caps_intersect (caps1, caps2);
-        fnval = res && ! gst_caps_is_empty (res);
-
-        gst_caps_unref (res);
-        gst_caps_unref (caps2);
-        gst_caps_unref (caps1);
-
-        return fnval;
 }
 
 static void
@@ -332,6 +290,48 @@ static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
 	reader->priv->has_video = FALSE;
 }
 
+GstElement *
+setup_pipeline (const char *sinkname)
+{
+	GstElement *pipeline, *src, *decoder, *sink;
+
+	/* Set up pipeline. */
+	pipeline = gst_pipeline_new ("pipeline");
+
+	src = gst_element_factory_make ("filesrc", "src");
+	decoder = gst_element_factory_make ("decodebin", "decoder");
+	sink = gst_element_factory_make (sinkname, "sink");
+
+	if (pipeline == NULL || src == NULL || decoder == NULL || sink == NULL) {
+		g_warning ("Error creating a GStreamer pipeline");
+		goto _error;
+	}
+
+	gst_bin_add_many (GST_BIN (pipeline),
+			  src,
+			  decoder,
+			  sink,
+			  NULL);
+
+	if (gst_element_link (src, decoder) == FALSE) {
+		g_warning ("Error linking GStreamer pipeline");
+		goto _error;
+	}
+
+	g_debug ("Pipeline complete");
+	return pipeline;
+
+_error:
+	if (src != NULL)
+		g_object_unref (src);
+	if (decoder != NULL)
+		g_object_unref (decoder);
+	if (sink != NULL)
+		g_object_unref (sink);
+
+	return NULL;
+}
+
 static gboolean
 av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *path)
 {
@@ -358,7 +358,9 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 
 	g_object_set (G_OBJECT (gst_reader->priv->src), "location", path, NULL);
 
-	/* Connect callback to identify audio and/or video tracks. */
+	/* Connect callback to identify audio and/or video tracks
+	 * and link decoder to sink.
+	 */ 
 	g_signal_connect (gst_reader->priv->decoder,
 			  "new-decoded-pad",
 			  G_CALLBACK (new_decoded_pad_cb),

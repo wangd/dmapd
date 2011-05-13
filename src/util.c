@@ -31,6 +31,7 @@
 #include "dmapd-dmap-db-ghashtable.h"
 #include "db-builder.h"
 #include "av-meta-reader.h"
+#include "av-render.h"
 #include "photo-meta-reader.h"
 
 static GHashTable *stringleton;
@@ -137,6 +138,8 @@ find_plugin_template (GType type)
 		return "db-builder-%s";
 	else if (type == TYPE_AV_META_READER)
 		return "av-meta-reader-%s";
+	else if (type == TYPE_AV_RENDER)
+		return "av-render-%s";
 	else if (type == TYPE_PHOTO_META_READER)
 		return "photo-meta-reader-%s";
 	else

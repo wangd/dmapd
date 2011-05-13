@@ -22,44 +22,44 @@
 
 #include "util-gst.h"
 
-GstElement *
-setup_pipeline (const char *sinkname)
+/* FIXME: copied from libdmapsharing: */
+gboolean
+pads_compatible (GstPad *pad1, GstPad *pad2)
 {
-	GstElement *pipeline, *src, *decoder, *sink;
+        gboolean fnval;
+        GstCaps *res, *caps1, *caps2;
 
-	/* Set up pipeline. */
-	pipeline = gst_pipeline_new ("pipeline");
+        caps1 = gst_pad_get_caps (pad1);
+        caps2 = gst_pad_get_caps (pad2);
+        res = gst_caps_intersect (caps1, caps2);
+        fnval = res && ! gst_caps_is_empty (res);
 
-	src = gst_element_factory_make ("filesrc", "src");
-	decoder = gst_element_factory_make ("decodebin", "decoder");
-	sink = gst_element_factory_make (sinkname, "sink");
+        gst_caps_unref (res);
+        gst_caps_unref (caps2);
+        gst_caps_unref (caps1);
 
-	if (pipeline == NULL || src == NULL || decoder == NULL || sink == NULL) {
-		g_warning ("Error creating a GStreamer pipeline");
-		goto _error;
+        return fnval;
+}
+
+gboolean
+transition_pipeline (GstElement *pipeline, GstState state)
+{
+	gboolean fnval = TRUE;
+	GstStateChangeReturn sret;
+
+	sret = gst_element_set_state (GST_ELEMENT (pipeline), state);
+	if (GST_STATE_CHANGE_ASYNC == sret) {
+		if (GST_STATE_CHANGE_SUCCESS != gst_element_get_state
+				(GST_ELEMENT (pipeline),
+				 &state,
+				 NULL,
+				 1 * GST_SECOND)) {
+			g_warning ("State change failed");
+			fnval = FALSE;
+		}
+	} else if (sret != GST_STATE_CHANGE_SUCCESS) {
+		g_warning ("Could not read file");
+		fnval = FALSE;
 	}
-
-	gst_bin_add_many (GST_BIN (pipeline),
-			  src,
-			  decoder,
-			  sink,
-			  NULL);
-
-	if (gst_element_link (src, decoder) == FALSE) {
-		g_warning ("Error linking GStreamer pipeline");
-		goto _error;
-	}
-
-	g_debug ("Pipeline complete");
-	return pipeline;
-
-_error:
-	if (src != NULL)
-		g_object_unref (src);
-	if (decoder != NULL)
-		g_object_unref (decoder);
-	if (sink != NULL)
-		g_object_unref (sink);
-
-	return NULL;
+	return fnval;
 }

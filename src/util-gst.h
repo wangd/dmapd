@@ -27,5 +27,7 @@
 #include <gst/gst.h>
 
 GstElement *setup_pipeline (const char *sinkname);
+gboolean pads_compatible (GstPad *pad1, GstPad *pad2);
+gboolean transition_pipeline (GstElement *pipeline, GstState state);
 
 #endif

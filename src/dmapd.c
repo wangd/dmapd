@@ -44,13 +44,15 @@
 #include "dmapd-module.h"
 #include "db-builder.h"
 #include "av-meta-reader.h"
+#include "av-render.h"
 #include "photo-meta-reader.h"
 #include "util.h"
 
-#define CONFFILE SYSCONFDIR	"/dmapd.conf"
-#define DEFAULT_DB_MOD		"ghashtable"
-#define DEFAULT_AV_MOD		"gst"
-#define DEFAULT_PHOTO_MOD	"vips"
+#define CONFFILE SYSCONFDIR           "/dmapd.conf"
+#define DEFAULT_DB_MOD                "ghashtable"
+#define DEFAULT_AV_META_READER_MOD    "gst"
+#define DEFAULT_AV_RENDER_MOD         "gst"
+#define DEFAULT_PHOTO_META_READER_MOD "vips"
 
 /* For use when deciding whether to serve DAAP or DPAP. */
 typedef enum {
@@ -66,21 +68,22 @@ static char *protocol_map[] = {
 
 GMainLoop *loop;
 
-static GSList *music_dirs         = NULL;
-static GSList *picture_dirs       = NULL;
-static gchar *db_dir              = NULL;
-static gchar *lockpath            = NULL;
-static gchar *pidpath             = NULL;
-static gchar *user                = NULL;
-static gchar *group               = NULL;
-static gboolean foreground        = FALSE;
-static gchar *share_name          = NULL;
-static gchar *transcode_mimetype  = NULL;
-static gboolean rt_transcode      = FALSE;
-static gchar *db_module           = NULL;
-static gchar *av_module           = NULL;
-static gchar *photo_module        = NULL;
-static guint  max_thumbnail_width = 128;
+static GSList *music_dirs              = NULL;
+static GSList *picture_dirs            = NULL;
+static gchar *db_dir                   = NULL;
+static gchar *lockpath                 = NULL;
+static gchar *pidpath                  = NULL;
+static gchar *user                     = NULL;
+static gchar *group                    = NULL;
+static gboolean foreground             = FALSE;
+static gchar *share_name               = NULL;
+static gchar *transcode_mimetype       = NULL;
+static gboolean rt_transcode           = FALSE;
+static gchar *db_module                = NULL;
+static gchar *av_meta_reader_module    = NULL;
+static gchar *av_render_module         = NULL;
+static gchar *photo_meta_reader_module = NULL;
+static guint  max_thumbnail_width      = 128;
 
 static void
 free_globals (void)
@@ -465,11 +468,14 @@ int main (int argc, char *argv[])
 		g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, debug_null, NULL);
 	}
 
-	av_module = getenv ("DMAPD_AV_MODULE");
-	av_module = av_module ? av_module : DEFAULT_AV_MOD;
+	av_meta_reader_module = getenv ("DMAPD_AV_MODULE");
+	av_meta_reader_module = av_meta_reader_module ? av_meta_reader_module : DEFAULT_AV_META_READER_MOD;
 
-	photo_module = getenv ("DMAPD_PHOTO_MODULE");
-	photo_module = photo_module ? photo_module : DEFAULT_PHOTO_MOD;
+	av_render_module = getenv ("DMAPD_AV_RENDER_MODULE");
+	av_render_module = av_render_module ? av_render_module : DEFAULT_AV_RENDER_MOD;
+
+	photo_meta_reader_module = getenv ("DMAPD_PHOTO_MODULE");
+	photo_meta_reader_module = photo_meta_reader_module ? photo_meta_reader_module : DEFAULT_PHOTO_META_READER_MOD;
 
 	db_module = getenv ("DMAPD_DB_MODULE");
 	db_module = db_module ? db_module : DEFAULT_DB_MOD;
@@ -477,9 +483,9 @@ int main (int argc, char *argv[])
 	context = g_option_context_new ("-m | -p: serve media using DMAP");
 	g_option_context_add_main_entries (context, entries, NULL);
 
-	if (strcmp (av_module, "null") != 0) {
+	if (strcmp (av_meta_reader_module, "null") != 0) {
 		GOptionGroup *group;
-		av_meta_reader = AV_META_READER (object_from_module (TYPE_AV_META_READER, av_module, NULL));
+		av_meta_reader = AV_META_READER (object_from_module (TYPE_AV_META_READER, av_meta_reader_module, NULL));
 		if (av_meta_reader) {
 			group = av_meta_reader_get_option_group (av_meta_reader);
 			if (group)
@@ -487,10 +493,10 @@ int main (int argc, char *argv[])
 		}
 	}
 
-	if (strcmp (photo_module, "null") != 0) {
+	if (strcmp (photo_meta_reader_module, "null") != 0) {
 		GOptionGroup *group;
 		photo_meta_reader = PHOTO_META_READER (object_from_module (TYPE_PHOTO_META_READER,
-		                                                           photo_module,
+		                                                           photo_meta_reader_module,
 									   NULL));
 		if (photo_meta_reader) {
 			group = photo_meta_reader_get_option_group (photo_meta_reader);
@@ -573,6 +579,33 @@ int main (int argc, char *argv[])
 #else
 		g_error ("DPAP support not present");
 #endif
+	}
+
+	// FIXME: where should this go? Need DB, but also need to call g_option_context_add_group.
+	AVRender *av_render = NULL;
+	if (share[DAAP] && strcmp (av_render_module, "null") != 0) { // FIXME decompose server to support AirPlay w/o DAAP?
+		//GOptionGroup *group;
+		// FIXME:
+		DMAPDb *db;
+		g_object_get (share[DAAP], "db", &db, NULL);
+		g_assert (db);
+		av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER,
+							   av_render_module,
+							   "db",
+							   g_object_ref (db), // Ref, right?
+							   NULL));
+		if (av_render) {
+			//group = av_render_get_option_group (av_render);
+			//if (group)
+			//	g_option_context_add_group (context, group);
+		}
+
+		GList *list = NULL;
+		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT));
+		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT - 1));
+		dacp_player_cue_play(DACP_PLAYER (av_render), list, 0);
+		//dacp_player_play_pause (DACP_PLAYER (av_render));
+		// FIXME: end where should this go?
 	}
 
 	g_main_loop_run (loop);

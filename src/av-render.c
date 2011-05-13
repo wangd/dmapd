@@ -31,8 +31,6 @@ av_render_class_init (AVRenderClass *klass)
 {
 }
 
-G_DEFINE_TYPE (AVRender, av_render, G_TYPE_OBJECT)
-
 DAAPRecord *
 av_render_now_playing_record (DACPPlayer * player)
 {
@@ -88,3 +86,22 @@ GOptionGroup *av_render_get_option_group (AVRender *reader)
 {
 	return AV_RENDER_GET_CLASS (reader)->get_option_group (reader);
 }
+
+static void av_render_iface_init (gpointer iface, gpointer data)
+{
+	DACPPlayerIface *player = iface;
+
+        g_assert (G_TYPE_FROM_INTERFACE (player) == DACP_TYPE_PLAYER);
+
+	player->now_playing_record = av_render_now_playing_record;
+	player->now_playing_artwork = av_render_now_playing_artwork;
+	player->play_pause = av_render_play_pause;
+	player->pause = av_render_pause;
+	player->next_item = av_render_next_item;
+	player->prev_item = av_render_prev_item;
+	player->cue_clear = av_render_cue_clear;
+	player->cue_play = av_render_cue_play;
+}
+
+G_DEFINE_TYPE_WITH_CODE (AVRender, av_render, G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (DACP_TYPE_PLAYER, av_render_iface_init))

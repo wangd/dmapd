@@ -57,7 +57,7 @@ struct _AVRenderClass {
 	void (*prev_item) (DACPPlayer * player);
 	void (*cue_clear) (DACPPlayer * player);
 	void (*cue_play) (DACPPlayer * player, GList * records, guint index);
-	GOptionGroup *(*get_option_group) (AVRender *reader);
+	GOptionGroup *(*get_option_group) (AVRender *render);
 };
 
 GType       av_render_get_type      (void);
@@ -71,7 +71,7 @@ void dacp_player_next_item (DACPPlayer * player);
 void dacp_player_prev_item (DACPPlayer * player);
 void dacp_player_cue_clear (DACPPlayer * player);
 void dacp_player_cue_play (DACPPlayer * player, GList * records, guint index);
-GOptionGroup *av_render_get_option_group (AVRender *reader);
+GOptionGroup *av_render_get_option_group (AVRender *render);
 
 #endif /* __AV_RENDER */
 
