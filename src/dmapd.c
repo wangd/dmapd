@@ -57,12 +57,14 @@
 /* For use when deciding whether to serve DAAP or DPAP. */
 typedef enum {
 	DAAP,
-	DPAP
+	DPAP,
+	DACP
 } protocol_id_t;
 
 static char *protocol_map[] = {
 	"DAAP",
 	"DPAP",
+	"DACP",
 	NULL,
 };
 
@@ -75,6 +77,7 @@ static gchar *lockpath                 = NULL;
 static gchar *pidpath                  = NULL;
 static gchar *user                     = NULL;
 static gchar *group                    = NULL;
+static gboolean render                 = FALSE;
 static gboolean foreground             = FALSE;
 static gchar *share_name               = NULL;
 static gchar *transcode_mimetype       = NULL;
@@ -121,6 +124,7 @@ static GOptionEntry entries[] = {
 	{ "db-dir", 'd', 0, G_OPTION_ARG_STRING, &db_dir, "Media database directory", NULL },
 	{ "user", 'u', 0, G_OPTION_ARG_STRING, &user, "User to run as", NULL },
 	{ "group", 'g', 0, G_OPTION_ARG_STRING, &group, "Group to run as", NULL },
+	{ "render", 'o', 0, G_OPTION_ARG_NONE, &render, "Render using AirPlay", NULL },
 	{ "transcode-mimetype", 't', 0, G_OPTION_ARG_STRING, &transcode_mimetype, "Target MIME type for transcoding", NULL },
 	{ "rt-transcode", 'r', 0, G_OPTION_ARG_NONE, &rt_transcode, "Perform transcoding in real-time", NULL },
 	{ "max-thumbnail-width", 'w', 0, G_OPTION_ARG_INT, &max_thumbnail_width, "Maximum thumbnail size (may reduce memory use)", NULL },
@@ -152,8 +156,10 @@ create_share (protocol_id_t protocol, DMAPDb *db, DMAPContainerDb *container_db)
 	g_debug ("Initializing %s sharing", protocol_map[protocol]);
 	if (protocol == DAAP) {
 		share = DMAP_SHARE (daap_share_new (name, NULL, db, container_db, transcode_mimetype));
-	} else {
+	} else if (protocol == DPAP) {
 		share = DMAP_SHARE (dpap_share_new (name, NULL, db, container_db, transcode_mimetype));
+	} else {
+		g_error ("Unknown share type");
 	}
 
 	g_free (name);
@@ -592,13 +598,25 @@ int main (int argc, char *argv[])
 #endif
 	}
 
-	GList *list = NULL;
-	DMAPDb *db;
-	if (share[DAAP]) {
-		g_object_get (share[DAAP], "db", &db, NULL);
+	if (av_render) {
+#ifdef WITH_DACP
+		DMAPDb *db;
+		DMAPContainerDb *container_db;
+		g_object_get (share[DAAP], "db", &db, NULL); /* FIXME: decompose share we can use db without DAAP. */
+		g_object_get (share[DAAP], "container-db", &container_db, NULL);
+		share[DACP] = DMAP_SHARE (dacp_share_new (share_name ? share_name : default_share_name (),
+		                                          DACP_PLAYER (av_render),
+							  db,
+							  container_db));
+
+		/* FIXME: test. */
+		GList *list = NULL;
 		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT));
 		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT - 1));
 		dacp_player_cue_play(DACP_PLAYER (av_render), list, 0);
+#else
+		g_error ("DACP support not present");
+#endif
 	}
 
 	g_main_loop_run (loop);
@@ -609,8 +627,13 @@ int main (int argc, char *argv[])
 	if (share[DPAP])
 		g_object_unref (share[DPAP]);
 
+	if (share[DACP])
+		g_object_unref (share[DACP]);
+
 	if (av_meta_reader)
 		g_object_unref (av_meta_reader);
+	if (av_render)
+		g_object_unref (av_render);
 	if (photo_meta_reader)
 		g_object_unref (photo_meta_reader);
 

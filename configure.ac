@@ -45,6 +45,12 @@ if test x$dpap == xyes; then
 	AM_CONDITIONAL(WITH_DPAP, true)
 fi
 
+AC_ARG_ENABLE(dacp, [  --disable-dacp          do not build DACP support], dacp=$enableval, dacp=yes)
+if test x$dacp == xyes; then
+	AC_DEFINE(WITH_DACP,1,[Defined when DACP support is to be built])
+	AM_CONDITIONAL(WITH_DACP, true)
+fi
+
 dnl Check for pkgconfig
 AC_CHECK_PROG(HAVE_PKGCONFIG, pkg-config, yes, no)
 dnl Give error and exit if we don't have pkgconfig

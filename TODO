@@ -2,15 +2,7 @@
 
 Create a new module, av-output.c and av-output-gst.c
 
-	Refactor dmapd.c:serve to allow AirPlay without DAAP (move DB builder?).
-
-	How to load AirPlay module at end (after DB built), but allow
-	adding options to GOption?
-
 	Finish implementing DACPPlayer interface.
-
-	Add -r, --render (???) with no argument; turns on DACP and
-	DMAP_AV_OUTPUT_MODULE
 
 	Handle DMAP_AV_RENDER_MODULE=gst://apexsink?host=foo,port=bar,generati...
 	This is ugly; what would be better?
@@ -19,7 +11,9 @@ Create a new module, av-output.c and av-output-gst.c
 
 Move, e.g., DMAP_AV_MODULE to DMAP_AV_META_READER? Update documentation.
 
-DACP integration.
+Test raopsink plugin.
+
+Test DACP integration.
 
 = Short term ===================================================================
 
