@@ -2,12 +2,14 @@
 
 Create a new module, av-output.c and av-output-gst.c
 
-	Finish implementing DACPPlayer interface.
+	Test and fix DACP share
 
 	Handle DMAP_AV_RENDER_MODULE=gst://apexsink?host=foo,port=bar,generati...
 	This is ugly; what would be better?
 
-	Why is --gst-debug... necessary? Timing issue in apexsink?
+	Finish apexsink patch:
+		See Bugzilla comments
+		Why is --gst-debug... necessary? Timing issue in apexsink?
 
 Move, e.g., DMAP_AV_MODULE to DMAP_AV_META_READER? Update documentation.
 
@@ -34,7 +36,7 @@ Mike: modular user interface
 
 Noah: investigate XCode integration
 
-Noah: iOS DAAP server App
+Noah: iOS Wallet Photo App
 
 Mike: dynamically adjust database when files are added to directories
 (inotify?). See "Kernel Korner - Intro to inotify"

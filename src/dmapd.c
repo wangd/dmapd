@@ -475,13 +475,13 @@ int main (int argc, char *argv[])
 		g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, debug_null, NULL);
 	}
 
-	av_meta_reader_module = getenv ("DMAPD_AV_MODULE");
+	av_meta_reader_module = getenv ("DMAPD_AV_META_READER_MODULE");
 	av_meta_reader_module = av_meta_reader_module ? av_meta_reader_module : DEFAULT_AV_META_READER_MOD;
 
 	av_render_module = getenv ("DMAPD_AV_RENDER_MODULE");
 	av_render_module = av_render_module ? av_render_module : DEFAULT_AV_RENDER_MOD;
 
-	photo_meta_reader_module = getenv ("DMAPD_PHOTO_MODULE");
+	photo_meta_reader_module = getenv ("DMAPD_PHOTO_META_READER_MODULE");
 	photo_meta_reader_module = photo_meta_reader_module ? photo_meta_reader_module : DEFAULT_PHOTO_META_READER_MOD;
 
 	db_module = getenv ("DMAPD_DB_MODULE");
