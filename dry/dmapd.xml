@@ -110,11 +110,11 @@ Dmapd supports the following environment variables:
 		<listitem>Enable verbose debugging messages</listitem>
 	</varlistentry>
 	<varlistentry>
-		<term>DMAPD_AV_MODULE</term>
+		<term>DMAPD_AV_META_READER_MODULE</term>
 		<listitem>Name of an alternate AV module</listitem>
 	</varlistentry>
 	<varlistentry>
-		<term>DMAPD_PHOTO_MODULE</term>
+		<term>DMAPD_PHOTO_META_READER_MODULE</term>
 		<listitem>Name of an alternate photograph module</listitem>
 	</varlistentry>
 	<varlistentry>
