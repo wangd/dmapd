@@ -36,6 +36,49 @@
 
 static GHashTable *stringleton;
 
+gchar *
+parse_plugin_option (gchar *str, GHashTable *hash_table)
+{
+	// The user may specify, e.g.:
+	//   "gst:sink=foo,opt1=bar,opt2=baz"
+	// or
+	//   "gst"
+
+	gchar *plugin = str;
+	gchar *colon = strchr (str, ':');
+
+	if (colon) {
+		gchar *eq, *key;
+		*colon = 0x00;
+		key = colon + 1;	
+		eq = strchr (key, '=');
+		if (str && eq) {
+			gchar *comma;
+			do {
+				gchar *val;
+				*eq = 0x00;
+				val = eq + 1;
+				comma = strchr (val, ',');
+				if (comma) {
+					*comma = 0x00;
+				}
+				g_hash_table_insert (hash_table, g_strdup (key), g_strdup(val));
+				if (comma) {
+					key = comma + 1;
+					eq = strchr (key, '=');
+					if (! str || ! eq) {
+						g_error ("Badly formatted plugin string");
+					}
+				}
+			} while (comma);
+		} else {
+			g_error ("Badly formatted plugin string");
+		}
+	}
+
+	return plugin;
+}
+
 GByteArray *
 blob_add_atomic (GByteArray *blob, const guint8 *ptr, const size_t size)
 {

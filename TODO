@@ -2,20 +2,18 @@
 
 Create a new module, av-output.c and av-output-gst.c
 
+	DMAPD_AV_RENDER_MODULE=gst:host=Dragon.local,port=5001 ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
+
 	Test and fix DACP share
 
 	Handle DMAP_AV_RENDER_MODULE=gst://apexsink?host=foo,port=bar,generati...
 	This is ugly; what would be better?
 
+	Move GStreamer render module to libdmapsharing?
+
 	Finish apexsink patch:
 		See Bugzilla comments
 		Why is --gst-debug... necessary? Timing issue in apexsink?
-
-Move, e.g., DMAP_AV_MODULE to DMAP_AV_META_READER? Update documentation.
-
-Test raopsink plugin.
-
-Test DACP integration.
 
 = Short term ===================================================================
 

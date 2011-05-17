@@ -33,18 +33,31 @@
 #include "dmapd-daap-record-factory.h"
 #include "dmapd-dmap-db-bdb.h"
 #include "dmapd-test-daap-record.h"
+#include "dmapd-test-parse-plugin-option.h"
 
 int main(void)
 {
 	int nf;
+	Suite *s;
+	SRunner *sr;
 
 	g_type_init ();
 
-	Suite *s = dmapd_test_daap_record_suite();
-	SRunner *sr = srunner_create(s);
+	s = dmapd_test_parse_plugin_option_suite();
+	sr = srunner_create(s);
 	srunner_run_all(sr, CK_NORMAL);
 	nf = srunner_ntests_failed(sr);
 	srunner_free(sr);
+	if (nf != 0)
+		exit (EXIT_FAILURE);
 
-	return (nf == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
+	s = dmapd_test_daap_record_suite();
+	sr = srunner_create(s);
+	srunner_run_all(sr, CK_NORMAL);
+	nf = srunner_ntests_failed(sr);
+	srunner_free(sr);
+	if (nf != 0)
+		exit (EXIT_FAILURE);
+
+	exit (EXIT_SUCCESS);
 }

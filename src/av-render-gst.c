@@ -26,8 +26,10 @@
 
 struct AVRenderGstPrivate {
 	GMainLoop *loop;
-	SoupURI *sink_uri;	// Captures sink plugin and properties.
-				// e.g., gst://apexsink?host=foo,port=5000
+	
+	gchar      *host;
+	gchar      *port;
+
 	GstElement *pipeline;
 	GstElement *src_decoder;
 	GstElement *resample;
@@ -43,7 +45,9 @@ enum {
 	PROP_SHUFFLE_STATE,
 	PROP_REPEAT_STATE,
 	PROP_PLAY_STATE,
-	PROP_VOLUME
+	PROP_VOLUME,
+	PROP_HOST,
+	PROP_PORT
 };
 
 DAAPRecord *
@@ -298,13 +302,21 @@ av_render_gst_cue_play (DACPPlayer * player, GList * records, guint index)
 
 	gst_bus_add_watch (bus, (GstBusFunc) bus_cb, render);
 		
-	// HOLY COW, IS A URI WHAT I WANT TO PARSE?
+	if (render->priv->host) {
+		g_object_set (G_OBJECT (render->priv->sink), "host", render->priv->host, NULL);
+	}
+
+	if (render->priv->port) {
+		errno = 0;
+		long port = strtol (render->priv->port, NULL, 10);
+		if (! errno) {
+			g_object_set (G_OBJECT (render->priv->sink), "port", port, NULL);
+		} else {
+			g_warning ("Error parsing port: %s", render->priv->port);
+		}
+	}
 	// FIXME:
-	g_object_set (G_OBJECT (render->priv->sink), "host", "Dragon.local", NULL);
-	// FIXME:
-	g_object_set (G_OBJECT (render->priv->sink), "port", 5000, NULL);
-	// FIXME:
-	g_object_set (G_OBJECT (render->priv->sink), "generation", 1, NULL);
+	g_object_set (G_OBJECT (render->priv->sink), "generation", 2, NULL);
 	// FIXME:
 	g_object_set (G_OBJECT (render->priv->sink), "transport-protocol", 1, NULL);
 
@@ -356,6 +368,9 @@ av_render_gst_init (AVRenderGst *render)
 	render->priv->song_list = NULL;
 	render->priv->song_current = NULL;
 
+	render->priv->host = NULL;
+	render->priv->port = NULL;
+
 	av_render_gst_reset (render);
 }
 
@@ -375,6 +390,8 @@ av_render_gst_get_property (GObject *object,
                         GValue *value,
                         GParamSpec *pspec)
 {
+	AVRenderGst *render = AV_RENDER_GST (object);
+
         switch (prop_id) {
                 case PROP_PLAYING_TIME:
 			g_error ("get prop");
@@ -391,6 +408,12 @@ av_render_gst_get_property (GObject *object,
                 case PROP_VOLUME:
 			g_error ("get prop");
                         break;
+                case PROP_HOST:
+			g_value_set_static_string (value, render->priv->host);
+			break;
+                case PROP_PORT:
+			g_value_set_static_string (value, render->priv->port);
+			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                         break;
@@ -403,6 +426,8 @@ av_render_gst_set_property (GObject *object,
                         const GValue *value,
                         GParamSpec *pspec)
 {
+	AVRenderGst *render = AV_RENDER_GST (object);
+
         switch (prop_id) {
                 case PROP_PLAYING_TIME:
 			g_error ("set prop");
@@ -416,6 +441,14 @@ av_render_gst_set_property (GObject *object,
                 case PROP_VOLUME:
 			g_error ("set prop");
                         break;
+                case PROP_HOST:
+			g_free (render->priv->host);
+			render->priv->host = g_value_dup_string (value);
+			break;
+                case PROP_PORT:
+			g_free (render->priv->port);
+			render->priv->port = g_value_dup_string (value);
+			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                         break;
@@ -449,6 +482,23 @@ av_render_gst_class_init (AVRenderGstClass *klass)
 	g_object_class_override_property (gobject_class, PROP_REPEAT_STATE, "repeat-state");
 	g_object_class_override_property (gobject_class, PROP_PLAY_STATE, "play-state");
 	g_object_class_override_property (gobject_class, PROP_VOLUME, "volume");
+
+	g_object_class_install_property (gobject_class,
+	                                 PROP_HOST,
+					 g_param_spec_string ("host",
+					                      "host",
+							      "host",
+							       NULL,
+							       G_PARAM_READWRITE));
+
+	// FIXME: should be an integer, but dmapd.c will provide a string.
+	g_object_class_install_property (gobject_class,
+	                                 PROP_PORT,
+					 g_param_spec_string ("port",
+					                      "port",
+							      "port",
+							       NULL,
+							       G_PARAM_READWRITE));
 }
 
 G_DEFINE_DYNAMIC_TYPE (AVRenderGst,

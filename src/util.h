@@ -32,6 +32,8 @@ typedef enum {
 	CACHE_TYPE_THUMBNAIL_DATA
 } cache_type_t;
 
+gchar *parse_plugin_option (gchar *str, GHashTable *hash_table);
+
 GByteArray *blob_add_atomic (GByteArray *blob,
 			     const guint8 *ptr,
 			     const size_t size);

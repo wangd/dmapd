@@ -37,7 +37,8 @@ dmapd_stress_test_LDADD = libdmapd.la
 if HAVE_CHECK
 dmapd_unit_test_SOURCES = \
 	dmapd-unit-test.c \
-	dmapd-test-daap-record.c
+	dmapd-test-daap-record.c \
+	dmapd-test-parse-plugin-option.c
 
 dmapd_unit_test_LDADD = libdmapd.la @CHECK_LIBS@
 dmapd_unit_test_INCLUDES = @CHECK_CFLAGS@
@@ -181,4 +182,6 @@ noinst_HEADERS = \
 	db-builder-gdir.h \
 	dmapd-dpap-record.h \
 	dmapd-dpap-record-factory.h \
-	dmapd-daap-record-factory.h
+	dmapd-daap-record-factory.h \
+	dmapd-test-daap-record.h \
+	dmapd-test-parse-plugin-option.h

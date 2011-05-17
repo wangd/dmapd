@@ -450,6 +450,11 @@ static void sigterm_handler (int i)
 	g_main_loop_quit (loop);
 }
 
+static set_prop (gchar *key, gchar *val, GObject *obj)
+{
+	g_object_set (obj, key, val, NULL);
+}
+
 int main (int argc, char *argv[])
 {
 	int exitval = EXIT_SUCCESS;
@@ -502,12 +507,16 @@ int main (int argc, char *argv[])
 
 	if (strcmp (av_render_module, "null") != 0) {
 		GOptionGroup *group;
-		av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER, av_render_module, NULL));
+		GHashTable *options = g_hash_table_new (g_str_hash, g_str_equal);
+		gchar *mod = parse_plugin_option (av_render_module, options);
+		av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER, mod, NULL));
 		if (av_render) {
+			g_hash_table_foreach (options, (GHFunc) set_prop, av_render);
 			group = av_render_get_option_group (av_render);
 			if (group)
 				g_option_context_add_group (context, group);
 		}
+		g_hash_table_destroy (options);
 	}
 
 	if (strcmp (photo_meta_reader_module, "null") != 0) {
