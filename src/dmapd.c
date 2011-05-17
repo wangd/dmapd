@@ -559,9 +559,9 @@ int main (int argc, char *argv[])
 		}
 	}
 
-	if (! (music_dirs || picture_dirs)) {
+	if (! (music_dirs || picture_dirs || render)) {
 		g_print ("%s", g_option_context_get_help (context, TRUE, NULL));
-		g_print ("Must provide '-m' or '-p' option\n");
+		g_print ("Must provide '-m', '-p' or '-o' option\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -607,7 +607,7 @@ int main (int argc, char *argv[])
 #endif
 	}
 
-	if (av_render) {
+	if (render && av_render) {
 #ifdef WITH_DACP
 		DMAPDb *db;
 		DMAPContainerDb *container_db;

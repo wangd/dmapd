@@ -83,6 +83,7 @@ dmapd_daap_record_set_property (GObject *object,
 	DmapdDAAPRecord *record = DMAPD_DAAP_RECORD (object);
 
 	switch (prop_id) {
+		char *str;
 		case PROP_LOCATION:
 			g_free (record->priv->location);
 			record->priv->location = g_value_dup_string (value);
@@ -96,16 +97,18 @@ dmapd_daap_record_set_property (GObject *object,
 			record->priv->album = stringleton_ref (g_value_get_string(value));
 			break;
 		case PROP_SORT_ALBUM:
+			str = g_value_get_string(value);
 			stringleton_unref (record->priv->sort_album);
-			record->priv->sort_album = value ? stringleton_ref (g_value_get_string(value)) : NULL;
+			record->priv->sort_album = str ? stringleton_ref (str) : NULL;
 			break;
 		case PROP_ARTIST:
 			stringleton_unref (record->priv->artist);
 			record->priv->artist = stringleton_ref (g_value_get_string(value));
 			break;
 		case PROP_SORT_ARTIST:
+			str = g_value_get_string(value);
 			stringleton_unref (record->priv->sort_artist);
-			record->priv->sort_artist = value ? stringleton_ref (g_value_get_string(value)) : NULL;
+			record->priv->sort_artist = str ? stringleton_ref (str) : NULL;
 			break;
 		case PROP_GENRE:
 			stringleton_unref (record->priv->genre);
