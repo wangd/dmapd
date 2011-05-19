@@ -28,7 +28,7 @@ struct AVRenderGstPrivate {
 	GMainLoop *loop;
 	
 	gchar      *host;
-	gchar      *port;
+	guint       port;
 
 	GstElement *pipeline;
 	GstElement *src_decoder;
@@ -69,7 +69,7 @@ const guchar *
 av_render_gst_now_playing_artwork (DACPPlayer * player, guint width,
 				 guint height)
 {
-	g_error ("Not implemented");
+	g_warning ("Now playing artwork not implemented");
 }
 
 void
@@ -123,7 +123,7 @@ av_render_gst_next_item (DACPPlayer * player)
 void
 av_render_gst_prev_item (DACPPlayer * player)
 {
-	g_error ("Not implemented");
+	g_warning ("Previous item not implemented");
 }
 
 static void av_render_gst_reset (AVRenderGst *render)
@@ -225,7 +225,7 @@ gboolean bus_cb (GstBus *bus, GstMessage *message, AVRenderGst *render)
 /* FIXME: would like to combine with av-meta-reader-gst.c's, but this needs audioresample
  * and audioconvert.
  */
-GstElement *
+static GstElement *
 setup_pipeline (const char *sinkname)
 {
 	GstElement *pipeline, *src_decoder, *resample, *convert, *sink;
@@ -307,13 +307,7 @@ av_render_gst_cue_play (DACPPlayer * player, GList * records, guint index)
 	}
 
 	if (render->priv->port) {
-		errno = 0;
-		long port = strtol (render->priv->port, NULL, 10);
-		if (! errno) {
-			g_object_set (G_OBJECT (render->priv->sink), "port", port, NULL);
-		} else {
-			g_warning ("Error parsing port: %s", render->priv->port);
-		}
+		g_object_set (G_OBJECT (render->priv->sink), "port", render->priv->port, NULL);
 	}
 	// FIXME:
 	g_object_set (G_OBJECT (render->priv->sink), "generation", 2, NULL);
@@ -369,7 +363,7 @@ av_render_gst_init (AVRenderGst *render)
 	render->priv->song_current = NULL;
 
 	render->priv->host = NULL;
-	render->priv->port = NULL;
+	render->priv->port = 0;
 
 	av_render_gst_reset (render);
 }
@@ -394,25 +388,30 @@ av_render_gst_get_property (GObject *object,
 
         switch (prop_id) {
                 case PROP_PLAYING_TIME:
-			g_error ("get prop");
+			// FIXME
+			g_value_set_ulong (value, 0);
                         break;
                 case PROP_SHUFFLE_STATE:
-			g_error ("get prop");
+			// FIXME
+			g_value_set_enum (value, 0);
                         break;
                 case PROP_REPEAT_STATE:
-			g_error ("get prop");
+			// FIXME
+			g_value_set_enum (value, 0);
                         break;
                 case PROP_PLAY_STATE:
-			g_error ("get prop");
+			// FIXME
+			g_value_set_enum (value, 0);
                         break;
                 case PROP_VOLUME:
-			g_error ("get prop");
+			// FIXME
+			g_value_set_ulong (value, 0);
                         break;
                 case PROP_HOST:
 			g_value_set_static_string (value, render->priv->host);
 			break;
                 case PROP_PORT:
-			g_value_set_static_string (value, render->priv->port);
+			g_value_set_uint (value, render->priv->port);
 			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -446,8 +445,7 @@ av_render_gst_set_property (GObject *object,
 			render->priv->host = g_value_dup_string (value);
 			break;
                 case PROP_PORT:
-			g_free (render->priv->port);
-			render->priv->port = g_value_dup_string (value);
+			render->priv->port = g_value_get_uint (value);
 			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -494,11 +492,13 @@ av_render_gst_class_init (AVRenderGstClass *klass)
 	// FIXME: should be an integer, but dmapd.c will provide a string.
 	g_object_class_install_property (gobject_class,
 	                                 PROP_PORT,
-					 g_param_spec_string ("port",
-					                      "port",
-							      "port",
-							       NULL,
-							       G_PARAM_READWRITE));
+					 g_param_spec_uint ("port",
+					                    "port",
+							    "port",
+							     0,
+							     G_MAXINT,
+							     0,
+							     G_PARAM_READWRITE));
 }
 
 G_DEFINE_DYNAMIC_TYPE (AVRenderGst,

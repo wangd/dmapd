@@ -68,6 +68,14 @@ static char *protocol_map[] = {
 	NULL,
 };
 
+/* Consolidate these so they may be passed to callback, etc. */
+typedef struct workers_t {
+	DAAPShare *daap_share;
+	DPAPShare *dpap_share;
+	DACPShare *dacp_share;
+	AVRender  *av_render;
+} workers_t;
+
 GMainLoop *loop;
 
 static GSList *music_dirs              = NULL;
@@ -87,6 +95,10 @@ static gchar *av_meta_reader_module    = NULL;
 static gchar *av_render_module         = NULL;
 static gchar *photo_meta_reader_module = NULL;
 static guint  max_thumbnail_width      = 128;
+
+// FIXME: make non-global, support mult. remotes and free when done.
+// store persistently or set in config file?
+static gchar *_guid = NULL;
 
 static void
 free_globals (void)
@@ -450,9 +462,84 @@ static void sigterm_handler (int i)
 	g_main_loop_quit (loop);
 }
 
-static set_prop (gchar *key, gchar *val, GObject *obj)
+static gboolean
+dacp_add_guid_cb (DACPShare *share, gchar *guid, gpointer user_data)
 {
-	g_object_set (obj, key, val, NULL);
+	// FIXME: handle multiple remotes? See also defn of _guid.
+	_guid = g_strdup (guid);
+}
+
+static gboolean
+dacp_lookup_guid_cb (DACPShare *share, gchar *guid, gpointer user_data)
+{
+	g_debug ("Comparing %s to %s", _guid, guid);
+	return _guid && ! strcmp (_guid, guid);
+}
+
+static void
+dacp_remote_found_cb (DACPShare *share, gchar *service_name, gchar *display_name, gpointer user_data)
+{
+	// FIXME:
+	g_print ("Enter passcode: ");
+	gchar passcode[5];
+
+	scanf ("%s", passcode);
+
+	dacp_share_pair (share, service_name, passcode);
+}
+
+static void
+dacp_player_updated_cb (DACPPlayer *player, DACPShare *share)
+{
+	dacp_share_player_updated (share);
+}
+
+static void
+raop_service_added_cb (DMAPMdnsBrowser *browser, DMAPMdnsBrowserService *service, workers_t *workers)
+{
+	gchar *host = NULL;
+
+	g_debug ("service added %s:%s:%s:%d (%s)", service->service_name, service->name, service->host, service->port);
+
+	g_object_get (workers->av_render, "host", &host, NULL);
+
+	if (host == NULL) {
+		g_warning ("RAOP host not set");
+	} else if (workers->dacp_share != NULL) {
+		g_debug ("DACP share already started, not doing it again");	
+	} else {
+		if (strcmp (service->host, host)) {
+			g_debug ("Wrong host, %s does not match %s", service->host, host);
+		} else {
+			DMAPDb *db;
+			DMAPContainerDb *container_db;
+
+			g_object_set (workers->av_render, "port", service->port);
+
+			// FIXME: set other properties (protocol, generation) from mDNS!
+			
+			g_object_get (workers->daap_share, "db", &db, NULL); // FIXME: decompose share we can use db without DAAP.
+			g_object_get (workers->daap_share, "container-db", &container_db, NULL);
+			workers->dacp_share = dacp_share_new ("FIXME",
+			                                      DACP_PLAYER (workers->av_render),
+							      db,
+							      container_db);
+
+			g_signal_connect_object (workers->dacp_share, "add-guid", G_CALLBACK (dacp_add_guid_cb), NULL, 0);
+			g_signal_connect_object (workers->dacp_share, "lookup-guid", G_CALLBACK (dacp_lookup_guid_cb), NULL, 0);
+			g_signal_connect_object (workers->dacp_share, "remote-found", G_CALLBACK (dacp_remote_found_cb), NULL, 0);
+
+			g_signal_connect_object (workers->av_render, "player-updated", G_CALLBACK (dacp_player_updated_cb), workers->dacp_share, 0);
+
+			dacp_share_start_lookup (workers->dacp_share);
+
+			// FIXME: this is to test, remove
+			//GList *list = NULL;
+			//list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT));
+			//list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT - 1));
+			//dacp_player_cue_play(DACP_PLAYER (workers->av_render), list, 0);
+		}
+	}
 }
 
 int main (int argc, char *argv[])
@@ -461,10 +548,9 @@ int main (int argc, char *argv[])
 	GError *error = NULL;
 	GOptionContext *context;
 	AVMetaReader *av_meta_reader = NULL;
-	AVRender *av_render = NULL;
 	PhotoMetaReader *photo_meta_reader = NULL;
 
-	DMAPShare *share[2] = { NULL, NULL };
+	workers_t workers = { NULL, NULL, NULL, NULL };
 
 	g_type_init ();
 	g_thread_init (NULL);
@@ -509,10 +595,10 @@ int main (int argc, char *argv[])
 		GOptionGroup *group;
 		GHashTable *options = g_hash_table_new (g_str_hash, g_str_equal);
 		gchar *mod = parse_plugin_option (av_render_module, options);
-		av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER, mod, NULL));
-		if (av_render) {
-			g_hash_table_foreach (options, (GHFunc) set_prop, av_render);
-			group = av_render_get_option_group (av_render);
+		workers.av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER, mod, NULL));
+		g_object_set (workers.av_render, "host", g_hash_table_lookup (options, "host"), NULL);
+		if (workers.av_render) {
+			group = av_render_get_option_group (workers.av_render);
 			if (group)
 				g_option_context_add_group (context, group);
 		}
@@ -584,7 +670,7 @@ int main (int argc, char *argv[])
 					"meta-reader",
 					av_meta_reader,
 					NULL));
-		share[DAAP] = serve (DAAP, factory, music_dirs);
+		workers.daap_share = DAAP_SHARE (serve (DAAP, factory, music_dirs));
 #else
 		g_error ("DAAP support not present");
 #endif
@@ -601,28 +687,24 @@ int main (int argc, char *argv[])
 					"meta-reader",
 					photo_meta_reader,
 					NULL));
-		share[DPAP] = serve (DPAP, factory, picture_dirs);
+		workers.dpap_share = DPAP_SHARE (serve (DPAP, factory, picture_dirs));
 #else
 		g_error ("DPAP support not present");
 #endif
 	}
 
-	if (render && av_render) {
+	if (render && workers.av_render) {
 #ifdef WITH_DACP
-		DMAPDb *db;
-		DMAPContainerDb *container_db;
-		g_object_get (share[DAAP], "db", &db, NULL); /* FIXME: decompose share we can use db without DAAP. */
-		g_object_get (share[DAAP], "container-db", &container_db, NULL);
-		share[DACP] = DMAP_SHARE (dacp_share_new (share_name ? share_name : default_share_name (),
-		                                          DACP_PLAYER (av_render),
-							  db,
-							  container_db));
-
-		/* FIXME: test. */
-		GList *list = NULL;
-		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT));
-		list = g_list_prepend (list, dmap_db_lookup_by_id (db, G_MAXINT - 1));
-		dacp_player_cue_play(DACP_PLAYER (av_render), list, 0);
+		GError *error = NULL;
+		DMAPMdnsBrowser *browser = dmap_mdns_browser_new (DMAP_MDNS_BROWSER_SERVICE_TYPE_RAOP);
+		if (browser == NULL) {
+			g_error ("Error creating mDNS browser");
+		}
+		g_signal_connect (G_OBJECT (browser), "service-added", G_CALLBACK (raop_service_added_cb), &workers);
+		dmap_mdns_browser_start (browser, &error);
+		if (error) {
+		        g_error ("error starting browser. code: %d message: %s", error->code, error->message);
+		}
 #else
 		g_error ("DACP support not present");
 #endif
@@ -630,19 +712,19 @@ int main (int argc, char *argv[])
 
 	g_main_loop_run (loop);
 
-	if (share[DAAP])
-		g_object_unref (share[DAAP]);
+	if (workers.daap_share)
+		g_object_unref (workers.daap_share);
 
-	if (share[DPAP])
-		g_object_unref (share[DPAP]);
+	if (workers.dpap_share)
+		g_object_unref (workers.dpap_share);
 
-	if (share[DACP])
-		g_object_unref (share[DACP]);
+	if (workers.dacp_share)
+		g_object_unref (workers.dacp_share);
 
 	if (av_meta_reader)
 		g_object_unref (av_meta_reader);
-	if (av_render)
-		g_object_unref (av_render);
+	if (workers.av_render)
+		g_object_unref (workers.av_render);
 	if (photo_meta_reader)
 		g_object_unref (photo_meta_reader);
 

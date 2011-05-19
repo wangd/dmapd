@@ -2,9 +2,11 @@
 
 Create a new module, av-output.c and av-output-gst.c
 
-	DMAPD_AV_RENDER_MODULE=gst:host=Dragon.local,port=5001 ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
+	DMAPD_AV_RENDER_MODULE=gst:host=192.168.1.XXX ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
 
 	Test and fix DACP share
+		Design and complete remote pairing, see
+		rb-dacp-pairing-page.c's signal handlers
 
 	Handle DMAP_AV_RENDER_MODULE=gst://apexsink?host=foo,port=bar,generati...
 	This is ugly; what would be better?

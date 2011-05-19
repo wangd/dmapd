@@ -294,7 +294,7 @@ static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
 	reader->priv->has_video = FALSE;
 }
 
-GstElement *
+static GstElement *
 setup_pipeline (const char *sinkname)
 {
 	GstElement *pipeline, *src, *decoder, *sink;
