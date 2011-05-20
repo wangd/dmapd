@@ -1,21 +1,14 @@
 = AirPlay ======================================================================
 
-Create a new module, av-output.c and av-output-gst.c
+DMAPD_AV_RENDER_MODULE=gst:host=192.168.1.XXX ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
 
-	DMAPD_AV_RENDER_MODULE=gst:host=192.168.1.XXX ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
+Check documentation of AV_X_MODULE
 
-	Test and fix DACP share
-		Design and complete remote pairing, see
-		rb-dacp-pairing-page.c's signal handlers
+Figure out how to handle remote pairing 
 
-	Handle DMAP_AV_RENDER_MODULE=gst://apexsink?host=foo,port=bar,generati...
-	This is ugly; what would be better?
+Clean up FIXME's in av-render-gst.c
 
-	Move GStreamer render module to libdmapsharing?
-
-	Finish apexsink patch:
-		See Bugzilla comments
-		Why is --gst-debug... necessary? Timing issue in apexsink?
+Move GStreamer render module to libdmapsharing?
 
 = Short term ===================================================================
 

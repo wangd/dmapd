@@ -35,6 +35,10 @@ struct AVRenderGstPrivate {
 	GstElement *resample;
 	GstElement *sink;
 
+	gboolean	shuffle_state;
+	DACPRepeatState repeat_state;
+	DACPPlayState   play_state;
+
 	GList *song_list;	// Songs to play.
 	GList *song_current;	// Song currently playing.
 };
@@ -73,6 +77,13 @@ av_render_gst_now_playing_artwork (DACPPlayer * player, guint width,
 }
 
 void
+av_render_gst_pause (DACPPlayer * player)
+{
+	transition_pipeline (AV_RENDER_GST (player)->priv->pipeline, GST_STATE_PAUSED);
+	AV_RENDER_GST (player)->priv->play_state = PLAY_PAUSED;
+}
+
+void
 av_render_gst_play_pause (DACPPlayer * player)
 {
 	AVRenderGst *render = AV_RENDER_GST (player);
@@ -83,17 +94,12 @@ av_render_gst_play_pause (DACPPlayer * player)
 		if (ret == GST_STATE_CHANGE_SUCCESS) {
 			if (state == GST_STATE_PAUSED) {
 				transition_pipeline (render->priv->pipeline, GST_STATE_PLAYING);
+				render->priv->play_state = PLAY_PLAYING;
 			} else {
-				transition_pipeline (render->priv->pipeline, GST_STATE_PAUSED);
+				av_render_gst_pause (player);
 			}
 		}
 	}
-}
-
-void
-av_render_gst_pause (DACPPlayer * player)
-{
-	transition_pipeline (AV_RENDER_GST (player)->priv->pipeline, GST_STATE_PAUSED);
 }
 
 // FIXME EOS handler goes to next song; should this be more explicit here?
@@ -102,6 +108,7 @@ void play_list_starting_at_current (AVRenderGst *render)
 	gchar *location;
 
 	transition_pipeline (render->priv->pipeline, GST_STATE_READY);
+	render->priv->play_state = PLAY_STOPPED;
 
 	g_object_get (render->priv->song_current->data, "location", &location, NULL);
 	g_object_set (G_OBJECT (render->priv->src_decoder), "uri", location, NULL);
@@ -109,6 +116,7 @@ void play_list_starting_at_current (AVRenderGst *render)
 	g_debug ("Playing %s", location);
 
 	transition_pipeline (render->priv->pipeline, GST_STATE_PLAYING);
+	render->priv->play_state = PLAY_PLAYING;
 }
 
 void
@@ -149,12 +157,13 @@ av_render_gst_cue_clear (DACPPlayer * player)
 	if (render->priv->pipeline) {
 		g_idle_add ((GSourceFunc) g_main_loop_quit, render->priv->loop);
 		transition_pipeline (render->priv->pipeline, GST_STATE_NULL);
+		render->priv->play_state = PLAY_STOPPED;
 		gst_object_unref (render->priv->pipeline);
 		av_render_gst_reset (render);
 	}
 }
 
-/* FIXME: mostly copied from AVReadMetaGstPrivate */
+/* FIXME: mostly copied from AVReadMetaGst */
 static void
 pad_added_cb (GstElement *decodebin, GstPad *pad,
               AVRenderGstPrivate *priv)
@@ -199,6 +208,7 @@ gboolean bus_cb (GstBus *bus, GstMessage *message, AVRenderGst *render)
 	case GST_MESSAGE_ERROR:
 		g_warning ("GStreamer error message");
 		transition_pipeline (render->priv->pipeline, GST_STATE_READY);
+		render->priv->play_state = PLAY_STOPPED;
 		g_idle_add ((GSourceFunc) g_main_loop_quit, render->priv->loop);
 		break;
 	case GST_MESSAGE_EOS:
@@ -309,20 +319,20 @@ av_render_gst_cue_play (DACPPlayer * player, GList * records, guint index)
 	if (render->priv->port) {
 		g_object_set (G_OBJECT (render->priv->sink), "port", render->priv->port, NULL);
 	}
-	// FIXME:
+	// FIXME: set both based on DNS-SD
 	g_object_set (G_OBJECT (render->priv->sink), "generation", 2, NULL);
-	// FIXME:
 	g_object_set (G_OBJECT (render->priv->sink), "transport-protocol", 1, NULL);
 
 	render->priv->song_list = records;
 	render->priv->song_current = g_list_nth (records, index);
 
-	play_list_starting_at_current (AV_RENDER_GST (player));
+	play_list_starting_at_current (render);
 
 	g_main_loop_run (render->priv->loop);
 
 	if (transition_pipeline (render->priv->pipeline, GST_STATE_NULL) == FALSE)
 		goto _return;
+	render->priv->play_state = PLAY_STOPPED;
 
 _return:
 	gst_object_unref (render->priv->pipeline);
@@ -365,6 +375,10 @@ av_render_gst_init (AVRenderGst *render)
 	render->priv->host = NULL;
 	render->priv->port = 0;
 
+	render->priv->shuffle_state = FALSE;
+	render->priv->repeat_state  = REPEAT_NONE;
+	render->priv->play_state    = PLAY_STOPPED;
+
 	av_render_gst_reset (render);
 }
 
@@ -387,25 +401,28 @@ av_render_gst_get_property (GObject *object,
 	AVRenderGst *render = AV_RENDER_GST (object);
 
         switch (prop_id) {
+		long volume;
                 case PROP_PLAYING_TIME:
-			// FIXME
-			g_value_set_ulong (value, 0);
+			g_error ("get prop");
                         break;
                 case PROP_SHUFFLE_STATE:
-			// FIXME
-			g_value_set_enum (value, 0);
+			g_value_set_enum (value, render->priv->shuffle_state);
                         break;
                 case PROP_REPEAT_STATE:
-			// FIXME
-			g_value_set_enum (value, 0);
+			g_value_set_enum (value, render->priv->repeat_state);
                         break;
                 case PROP_PLAY_STATE:
-			// FIXME
-			g_value_set_enum (value, 0);
+			g_value_set_enum (value, render->priv->play_state);
                         break;
                 case PROP_VOLUME:
-			// FIXME
-			g_value_set_ulong (value, 0);
+			if (render->priv->sink) {
+				double v;
+				g_object_get (render->priv->sink, "volume", &v, NULL);
+				volume = v;
+			} else {
+				volume = 0;
+			}
+			g_value_set_ulong (value, volume);
                         break;
                 case PROP_HOST:
 			g_value_set_static_string (value, render->priv->host);
@@ -432,13 +449,22 @@ av_render_gst_set_property (GObject *object,
 			g_error ("set prop");
                         break;
                 case PROP_SHUFFLE_STATE:
-			g_error ("set prop");
+			render->priv->shuffle_state = g_value_get_boolean (value);
                         break;
                 case PROP_REPEAT_STATE:
-			g_error ("set prop");
+			render->priv->repeat_state = g_value_get_boolean (value);
                         break;
                 case PROP_VOLUME:
-			g_error ("set prop");
+			if (render->priv->sink) {
+				long volume = g_value_get_ulong (value);
+				double v = volume;
+				g_object_set (render->priv->sink, "volume", v, NULL);
+			} else {
+				g_error ("Render does not yet exist");
+			}
+                        break;
+                case PROP_PLAY_STATE:
+			render->priv->play_state = g_value_get_boolean (value);
                         break;
                 case PROP_HOST:
 			g_free (render->priv->host);
