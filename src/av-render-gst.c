@@ -82,7 +82,7 @@ void
 av_render_gst_pause (DACPPlayer * player)
 {
 	transition_pipeline (AV_RENDER_GST (player)->priv->pipeline, GST_STATE_PAUSED);
-	AV_RENDER_GST (player)->priv->play_state = PLAY_PAUSED;
+	AV_RENDER_GST (player)->priv->play_state = DACP_PLAY_PAUSED;
 }
 
 void
@@ -96,7 +96,7 @@ av_render_gst_play_pause (DACPPlayer * player)
 		if (ret == GST_STATE_CHANGE_SUCCESS) {
 			if (state == GST_STATE_PAUSED) {
 				transition_pipeline (render->priv->pipeline, GST_STATE_PLAYING);
-				render->priv->play_state = PLAY_PLAYING;
+				render->priv->play_state = DACP_PLAY_PLAYING;
 			} else {
 				av_render_gst_pause (player);
 			}
@@ -110,7 +110,7 @@ void play_list_starting_at_current (AVRenderGst *render)
 	gchar *location;
 
 	transition_pipeline (render->priv->pipeline, GST_STATE_READY);
-	render->priv->play_state = PLAY_STOPPED;
+	render->priv->play_state = DACP_PLAY_STOPPED;
 
 	g_object_get (render->priv->song_current->data, "location", &location, NULL);
 	g_object_set (G_OBJECT (render->priv->src_decoder), "uri", location, NULL);
@@ -118,7 +118,7 @@ void play_list_starting_at_current (AVRenderGst *render)
 	g_debug ("Playing %s", location);
 
 	transition_pipeline (render->priv->pipeline, GST_STATE_PLAYING);
-	render->priv->play_state = PLAY_PLAYING;
+	render->priv->play_state = DACP_PLAY_PLAYING;
 }
 
 void
@@ -159,7 +159,7 @@ av_render_gst_cue_clear (DACPPlayer * player)
 	if (render->priv->pipeline) {
 		g_idle_add ((GSourceFunc) g_main_loop_quit, render->priv->loop);
 		transition_pipeline (render->priv->pipeline, GST_STATE_NULL);
-		render->priv->play_state = PLAY_STOPPED;
+		render->priv->play_state = DACP_PLAY_STOPPED;
 		gst_object_unref (render->priv->pipeline);
 		av_render_gst_reset (render);
 	}
@@ -210,7 +210,7 @@ gboolean bus_cb (GstBus *bus, GstMessage *message, AVRenderGst *render)
 	case GST_MESSAGE_ERROR:
 		g_warning ("GStreamer error message");
 		transition_pipeline (render->priv->pipeline, GST_STATE_READY);
-		render->priv->play_state = PLAY_STOPPED;
+		render->priv->play_state = DACP_PLAY_STOPPED;
 		g_idle_add ((GSourceFunc) g_main_loop_quit, render->priv->loop);
 		break;
 	case GST_MESSAGE_EOS:
@@ -334,7 +334,7 @@ av_render_gst_cue_play (DACPPlayer * player, GList * records, guint index)
 
 	if (transition_pipeline (render->priv->pipeline, GST_STATE_NULL) == FALSE)
 		goto _return;
-	render->priv->play_state = PLAY_STOPPED;
+	render->priv->play_state = DACP_PLAY_STOPPED;
 
 _return:
 	gst_object_unref (render->priv->pipeline);
@@ -379,8 +379,8 @@ av_render_gst_init (AVRenderGst *render)
 	render->priv->transport_protocol = DMAP_MDNS_BROWSER_TRANSPORT_PROTOCOL_TCP;
 
 	render->priv->shuffle_state = FALSE;
-	render->priv->repeat_state  = REPEAT_NONE;
-	render->priv->play_state    = PLAY_STOPPED;
+	render->priv->repeat_state  = DACP_REPEAT_NONE;
+	render->priv->play_state    = DACP_PLAY_STOPPED;
 
 	av_render_gst_reset (render);
 }
