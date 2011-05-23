@@ -2,7 +2,7 @@
 
 DMAPD_AV_RENDER_MODULE=gst:host=192.168.1.XXX ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
 
-Check documentation of AV_X_MODULE
+Check documentation of *_MODULE
 
 Figure out how to handle remote pairing 
 

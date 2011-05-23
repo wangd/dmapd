@@ -515,6 +515,7 @@ raop_service_added_cb (DMAPMdnsBrowser *browser, DMAPMdnsBrowserService *service
 			DMAPContainerDb *container_db;
 
 			g_object_set (workers->av_render, "port", service->port);
+			g_object_set (workers->av_render, "transport-protocol", service->transport_protocol);
 
 			// FIXME: set other properties (protocol, generation) from mDNS!
 			

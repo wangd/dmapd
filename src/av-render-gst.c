@@ -29,6 +29,7 @@ struct AVRenderGstPrivate {
 	
 	gchar      *host;
 	guint       port;
+	DMAPMdnsBrowserTransportProtocol transport_protocol;
 
 	GstElement *pipeline;
 	GstElement *src_decoder;
@@ -51,7 +52,8 @@ enum {
 	PROP_PLAY_STATE,
 	PROP_VOLUME,
 	PROP_HOST,
-	PROP_PORT
+	PROP_PORT,
+	PROP_TRANSPORT_PROTOCOL
 };
 
 DAAPRecord *
@@ -319,9 +321,9 @@ av_render_gst_cue_play (DACPPlayer * player, GList * records, guint index)
 	if (render->priv->port) {
 		g_object_set (G_OBJECT (render->priv->sink), "port", render->priv->port, NULL);
 	}
+	g_object_set (G_OBJECT (render->priv->sink), "transport-protocol", render->priv->transport_protocol, NULL);
 	// FIXME: set both based on DNS-SD
 	g_object_set (G_OBJECT (render->priv->sink), "generation", 2, NULL);
-	g_object_set (G_OBJECT (render->priv->sink), "transport-protocol", 1, NULL);
 
 	render->priv->song_list = records;
 	render->priv->song_current = g_list_nth (records, index);
@@ -374,6 +376,7 @@ av_render_gst_init (AVRenderGst *render)
 
 	render->priv->host = NULL;
 	render->priv->port = 0;
+	render->priv->transport_protocol = DMAP_MDNS_BROWSER_TRANSPORT_PROTOCOL_TCP;
 
 	render->priv->shuffle_state = FALSE;
 	render->priv->repeat_state  = REPEAT_NONE;
@@ -430,6 +433,9 @@ av_render_gst_get_property (GObject *object,
                 case PROP_PORT:
 			g_value_set_uint (value, render->priv->port);
 			break;
+                case PROP_TRANSPORT_PROTOCOL:
+			g_value_set_enum (value, render->priv->transport_protocol);
+			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                         break;
@@ -473,6 +479,9 @@ av_render_gst_set_property (GObject *object,
                 case PROP_PORT:
 			render->priv->port = g_value_get_uint (value);
 			break;
+                case PROP_TRANSPORT_PROTOCOL:
+			render->priv->transport_protocol = g_value_get_enum (value);
+			break;
                 default:
                         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
                         break;
@@ -515,7 +524,6 @@ av_render_gst_class_init (AVRenderGstClass *klass)
 							       NULL,
 							       G_PARAM_READWRITE));
 
-	// FIXME: should be an integer, but dmapd.c will provide a string.
 	g_object_class_install_property (gobject_class,
 	                                 PROP_PORT,
 					 g_param_spec_uint ("port",
@@ -525,6 +533,15 @@ av_render_gst_class_init (AVRenderGstClass *klass)
 							     G_MAXINT,
 							     0,
 							     G_PARAM_READWRITE));
+
+	g_object_class_install_property (gobject_class,
+	                                 PROP_TRANSPORT_PROTOCOL,
+					 g_param_spec_enum ("transport-protocol",
+					                    "transport-protocol",
+							    "transport-protocol",
+	                                                    DMAP_TYPE_DMAP_MDNS_BROWSER_TRANSPORT_PROTOCOL,
+							    DMAP_MDNS_BROWSER_TRANSPORT_PROTOCOL_TCP,
+							    G_PARAM_READWRITE));
 }
 
 G_DEFINE_DYNAMIC_TYPE (AVRenderGst,
