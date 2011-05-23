@@ -35,6 +35,65 @@ music, video and photograph libraries containing thousands of files.
 .SH DETAILS
 .PP
 
+Dmapd supports the following command line options:
+
+.TP
+-?, --help
+Show help options
+.TP
+-f, --foreground
+Do not fork; remain in foreground
+.TP
+-n, --name
+Name of media shares
+.TP
+-m, --music-dir
+Music directory
+.TP
+-p, --picture-dir
+Picture directory
+.TP
+-l, --lockpath
+Path to lockfile
+.TP
+-i, --pidpath
+Path to PID file
+.TP
+-d, --db-dir
+Media database directory
+.TP
+-u, --user
+User to run as
+.TP
+-g, --group
+Group to run as
+.TP
+-t, --transcode-mime-type
+Target MIME type for transcoding
+.TP
+-r, --rt-transcode
+Perform transcoding in real-time
+.PP
+
+Dmapd supports the following environment variables:
+
+.TP
+DMAPD_DEBUG
+Enable verbose debugging messages
+.TP
+DMAPD_AV_META_READER_MODULE
+Name of an alternate AV module
+.TP
+DMAPD_AV_RENDER_MODULE
+Name of an alternate AV render module; when applicable may also specify a host, e.g.: DMAPD_AV_RENDER_MODULE=gst:host=192.168.0.1
+.TP
+DMAPD_PHOTO_META_READER_MODULE
+Name of an alternate photograph module
+.TP
+DMAPD_DB_MODULE
+Name of an alternate database module
+.PP
+
 Dmapd can provide content to any client that supports DAAP or DPAP. This
 includes the following software clients and hardware devices:
 

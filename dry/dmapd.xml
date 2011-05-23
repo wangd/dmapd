@@ -114,6 +114,10 @@ Dmapd supports the following environment variables:
 		<listitem>Name of an alternate AV module</listitem>
 	</varlistentry>
 	<varlistentry>
+		<term>DMAPD_AV_RENDER_MODULE</term>
+		<listitem>Name of an alternate AV render module; when applicable may also specify a host, e.g.: DMAPD_AV_RENDER_MODULE=gst:host=192.168.0.1</listitem>
+	</varlistentry>
+	<varlistentry>
 		<term>DMAPD_PHOTO_META_READER_MODULE</term>
 		<listitem>Name of an alternate photograph module</listitem>
 	</varlistentry>

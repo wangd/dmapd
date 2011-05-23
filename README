@@ -40,6 +40,62 @@ this program.
 	
 = NASTY DETAILS ============================================================
 	
+Dmapd supports the following command line options:
+
+-?, --help
+    Show help options
+
+-f, --foreground
+    Do not fork; remain in foreground
+
+-n, --name
+    Name of media shares
+
+-m, --music-dir
+    Music directory
+
+-p, --picture-dir
+    Picture directory
+
+-l, --lockpath
+    Path to lockfile
+
+-i, --pidpath
+    Path to PID file
+
+-d, --db-dir
+    Media database directory
+
+-u, --user
+    User to run as
+
+-g, --group
+    Group to run as
+
+-t, --transcode-mime-type
+    Target MIME type for transcoding
+
+-r, --rt-transcode
+    Perform transcoding in real-time
+
+Dmapd supports the following environment variables:
+
+DMAPD_DEBUG
+    Enable verbose debugging messages
+
+DMAPD_AV_META_READER_MODULE
+    Name of an alternate AV module
+
+DMAPD_AV_RENDER_MODULE
+    Name of an alternate AV render module; when applicable may also 
+    specify a host, e.g.: DMAPD_AV_RENDER_MODULE=gst:host=192.168.0.1
+
+DMAPD_PHOTO_META_READER_MODULE
+    Name of an alternate photograph module
+
+DMAPD_DB_MODULE
+    Name of an alternate database module
+
 Dmapd can provide content to any client that supports DAAP or DPAP. 
 This includes the following software clients and hardware devices:
 
