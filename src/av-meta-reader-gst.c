@@ -29,8 +29,7 @@ struct AVMetaReaderGstPrivate {
 	GMainLoop *loop;
 	GMutex *tag_read;
 	GstElement *pipeline;
-	GstElement *src;
-	GstElement *decoder;
+	GstElement *src_decoder;
 	GstElement *sink;
 	gboolean has_video;
 };
@@ -247,8 +246,8 @@ no_more_pads_cb (GstElement *element, GMainLoop *loop)
 }
 
 static void
-new_decoded_pad_cb (GstElement *decodebin, GstPad *pad, gboolean last,
-	   	    AVMetaReaderGstPrivate *priv)
+pad_added_cb (GstElement *decodebin, GstPad *pad, 
+	      AVMetaReaderGstPrivate *priv)
 {
 	GstCaps *caps;
 	const gchar *mimetype;
@@ -288,8 +287,7 @@ _return:
 static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
 {
 	reader->priv->pipeline = NULL;
-	reader->priv->src = NULL;
-	reader->priv->decoder = NULL;
+	reader->priv->src_decoder = NULL;
 	reader->priv->sink = NULL;
 	reader->priv->has_video = FALSE;
 }
@@ -297,39 +295,30 @@ static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
 static GstElement *
 setup_pipeline (const char *sinkname)
 {
-	GstElement *pipeline, *src, *decoder, *sink;
+	GstElement *pipeline, *src_decoder, *sink;
 
 	/* Set up pipeline. */
 	pipeline = gst_pipeline_new ("pipeline");
 
-	src = gst_element_factory_make ("filesrc", "src");
-	decoder = gst_element_factory_make ("decodebin", "decoder");
+	src_decoder = gst_element_factory_make ("uridecodebin", "src-decoder");
 	sink = gst_element_factory_make (sinkname, "sink");
 
-	if (pipeline == NULL || src == NULL || decoder == NULL || sink == NULL) {
+	if (pipeline == NULL || src_decoder == NULL || sink == NULL) {
 		g_warning ("Error creating a GStreamer pipeline");
 		goto _error;
 	}
 
 	gst_bin_add_many (GST_BIN (pipeline),
-			  src,
-			  decoder,
+			  src_decoder,
 			  sink,
 			  NULL);
-
-	if (gst_element_link (src, decoder) == FALSE) {
-		g_warning ("Error linking GStreamer pipeline");
-		goto _error;
-	}
 
 	g_debug ("Pipeline complete");
 	return pipeline;
 
 _error:
-	if (src != NULL)
-		g_object_unref (src);
-	if (decoder != NULL)
-		g_object_unref (decoder);
+	if (src_decoder != NULL)
+		g_object_unref (src_decoder);
 	if (sink != NULL)
 		g_object_unref (sink);
 
@@ -339,6 +328,7 @@ _error:
 static gboolean
 av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *path)
 {
+	gchar *uri = g_strdup_printf ("file://%s", path);
 	GstFormat fmt = GST_FORMAT_TIME;
 	gint64 nanoduration;
 	GstTagList *tags = NULL;
@@ -346,31 +336,29 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 
 	g_mutex_lock (gst_reader->priv->tag_read);
 
-	g_debug("Looking at %s", path);
+	g_debug("Looking at %s", uri);
 
 	if (! (gst_reader->priv->pipeline = setup_pipeline ("fakesink")))
 		goto _return;
 
-	gst_reader->priv->src     = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "src");
-	gst_reader->priv->decoder = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "decoder");
-	gst_reader->priv->sink    = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "sink");
+	gst_reader->priv->src_decoder = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "src-decoder");
+	gst_reader->priv->sink        = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "sink");
 	
-	if (gst_reader->priv->src == NULL
-	 || gst_reader->priv->decoder == NULL
+	if (gst_reader->priv->src_decoder == NULL
 	 || gst_reader->priv->sink == NULL)
 		goto _return;
 
-	g_object_set (G_OBJECT (gst_reader->priv->src), "location", path, NULL);
+	g_object_set (G_OBJECT (gst_reader->priv->src_decoder), "uri", uri, NULL);
 
 	/* Connect callback to identify audio and/or video tracks
 	 * and link decoder to sink.
 	 */ 
-	g_signal_connect (gst_reader->priv->decoder,
-			  "new-decoded-pad",
-			  G_CALLBACK (new_decoded_pad_cb),
+	g_signal_connect (gst_reader->priv->src_decoder,
+			  "pad-added",
+			  G_CALLBACK (pad_added_cb),
 			  gst_reader->priv);
 
-	g_signal_connect (gst_reader->priv->decoder,
+	g_signal_connect (gst_reader->priv->src_decoder,
 			  "no-more-pads",
 			  G_CALLBACK (no_more_pads_cb),
 			  gst_reader->priv->loop);
@@ -386,7 +374,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	if (! gst_element_query_duration (gst_reader->priv->sink,
 					 &fmt,
 					 &nanoduration)) {
-		g_warning ("Could not determine duration of %s", path);
+		g_warning ("Could not determine duration of %s", uri);
 	} else {
 		g_assert (fmt == GST_FORMAT_TIME);
 		/* NOTE: cast avoids segfault on MIPS32: */
@@ -394,7 +382,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	}
 
 	if (! message_loop (GST_ELEMENT (gst_reader->priv->pipeline), &tags)) {
-		g_warning ("Failed in message reading for %s", path);
+		g_warning ("Failed in message reading for %s", uri);
 	}
 
 	if (transition_pipeline (gst_reader->priv->pipeline, GST_STATE_NULL) ==
@@ -412,10 +400,12 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 		gst_tag_list_free (tags);
 		tags = NULL;
 	} else {
-		g_warning ("No metadata found for %s", path);
+		g_warning ("No metadata found for %s", uri);
 	}
 
 _return:
+	g_free (uri);
+
 	gst_object_unref (gst_reader->priv->pipeline);
 	av_meta_reader_gst_reset (gst_reader);
 

@@ -221,12 +221,6 @@ gboolean bus_cb (GstBus *bus, GstMessage *message, AVRenderGst *render)
 			g_idle_add ((GSourceFunc) g_main_loop_quit, render->priv->loop);
 		}
 		break;
-	case GST_MESSAGE_STATE_CHANGED:
-		g_debug ("GStreamer state changed message");
-		break;
-	case GST_MESSAGE_TAG:
-		g_debug ("GStreamer tag message");
-		break;
 	default:
 		g_debug ("Unhandled GStreamer message");
 	}
