@@ -22,42 +22,41 @@
 
 #include <check.h>
 #include <glib.h>
-#include <config.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 #include <libdmapsharing/dmap.h>
 
-#include "util.h"
-#include "dmapd-daap-record.h"
-#include "dmapd-daap-record-factory.h"
-#include "dmapd-dmap-db-bdb.h"
 #include "dmapd-test-daap-record.h"
 #include "dmapd-test-parse-plugin-option.h"
 
-int main(void)
+static void
+debug_null (const char *log_domain,
+            GLogLevelFlags log_level,
+            const gchar *message,
+            gpointer user_data)
+{
+}
+
+void run_suite (Suite *s)
 {
 	int nf;
-	Suite *s;
 	SRunner *sr;
 
+	sr = srunner_create(s);
+	srunner_run_all(sr, CK_NORMAL);
+	nf = srunner_ntests_failed(sr);
+	srunner_free(sr);
+	if (nf != 0)
+		exit (EXIT_FAILURE);
+}
+
+int main(void)
+{
 	g_type_init ();
+	stringleton_init ();
+	g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, debug_null, NULL);
 
-	s = dmapd_test_parse_plugin_option_suite();
-	sr = srunner_create(s);
-	srunner_run_all(sr, CK_NORMAL);
-	nf = srunner_ntests_failed(sr);
-	srunner_free(sr);
-	if (nf != 0)
-		exit (EXIT_FAILURE);
-
-	s = dmapd_test_daap_record_suite();
-	sr = srunner_create(s);
-	srunner_run_all(sr, CK_NORMAL);
-	nf = srunner_ntests_failed(sr);
-	srunner_free(sr);
-	if (nf != 0)
-		exit (EXIT_FAILURE);
+	run_suite (dmapd_test_parse_plugin_option_suite());
+	run_suite (dmapd_test_daap_record_suite());
 
 	exit (EXIT_SUCCESS);
 }
