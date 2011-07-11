@@ -59,14 +59,21 @@ if test "x$HAVE_PKGCONFIG" = "xno"; then
 fi
 
 PKG_PROG_PKG_CONFIG
-AC_ARG_WITH([systemdsystemunitdir],
-        AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
-	[], [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
-AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
-AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir"])
 
-DISTCHECK_CONFIGURE_FLAGS = \
-        --with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
+dnl Check for systemd
+AC_ARG_WITH([systemdsystemunitdir],
+AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files (auto=detect)]), [
+        if test "$withval" = "auto"; then
+                systemdsystemunitdir=`$PKG_CONFIG --variable=systemdsystemunitdir systemd`
+        elif test "$withval" != "no"; then
+                systemdsystemunitdir=$withval
+        fi
+], [])
+if test "$systemdsystemunitdir" != ""; then
+        AC_SUBST(systemdsystemunitdir)
+        AC_DEFINE(HAVE_SYSTEMD,, Define if you want to use systemd socket activation)
+fi
+AM_CONDITIONAL(HAVE_SYSTEMD, test "$systemdsystemunitdir" != "")
 
 dnl Check for Glib2.0
 PKG_CHECK_MODULES(GLIB, glib-2.0, HAVE_GLIB=yes,HAVE_GLIB=no)
