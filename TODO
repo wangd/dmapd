@@ -12,6 +12,8 @@ Move GStreamer render module to libdmapsharing?
 
 = Short term ===================================================================
 
+Mike: split DB/cache directories; update packages?
+
 Mike: temporary, thumbnail files remain
 
 Mike: crashes when you specify -m on a big picture directory?

@@ -210,9 +210,6 @@ daemonize (void)
 	int child, fd;
 	char *_lockpath, *pid, *_pidpath;
 
-	if (getppid () == 1)
-		return; /* Already a daemon */
-
 	child = fork ();
 
 	if (child < 0)
