@@ -95,6 +95,7 @@ static gchar *av_meta_reader_module    = NULL;
 static gchar *av_render_module         = NULL;
 static gchar *photo_meta_reader_module = NULL;
 static guint  max_thumbnail_width      = 128;
+static gboolean version                = FALSE;
 
 // FIXME: make non-global, support mult. remotes and free when done.
 // store persistently or set in config file?
@@ -140,6 +141,7 @@ static GOptionEntry entries[] = {
 	{ "transcode-mimetype", 't', 0, G_OPTION_ARG_STRING, &transcode_mimetype, "Target MIME type for transcoding", NULL },
 	{ "rt-transcode", 'r', 0, G_OPTION_ARG_NONE, &rt_transcode, "Perform transcoding in real-time", NULL },
 	{ "max-thumbnail-width", 'w', 0, G_OPTION_ARG_INT, &max_thumbnail_width, "Maximum thumbnail size (may reduce memory use)", NULL },
+	{ "version", 'v', 0, G_OPTION_ARG_NONE, &version, "Print version number and exit", NULL },
 	{ NULL }
 };
 
@@ -619,6 +621,11 @@ int main (int argc, char *argv[])
 
 	if (! g_option_context_parse (context, &argc, &argv, &error)) {
 		g_error ("Option parsing failed: %s", error->message);
+	}
+
+	if (version) {
+		g_print ("dmapd version %s\n", VERSION);
+		exit (EXIT_SUCCESS);
 	}
 
 	g_object_set (photo_meta_reader, "max-thumbnail-width", max_thumbnail_width, NULL);
