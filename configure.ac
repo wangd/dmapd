@@ -165,14 +165,9 @@ AC_SUBST(MAGICK_CFLAGS)
 AC_SUBST(MAGICK_LIBS)
 
 dnl Check for libvips, used for DPAP thumbnailing
-PKG_CHECK_MODULES(VIPS, vips-7.24 >= 7.24.1,
+PKG_CHECK_MODULES(VIPS, vips-7.26,
   HAVE_VIPS=yes,
   HAVE_VIPS=no)
-
-if test x"$HAVE_VIPS" = "xyes"; then
-  AC_DEFINE(HAVE_VIPS, 1, [Define if VIPS support is enabled])
-  AC_CHECK_LIB(vips, im_bufjpeg2vips, AC_DEFINE(HAVE_VIPS_BUFJPEG2VIPS, 1, [Define if VIPS supports im_bufjpeg2vips]))
-fi
 
 AM_CONDITIONAL(USE_VIPS, test x"$HAVE_VIPS" = "xyes")
 

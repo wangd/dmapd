@@ -212,7 +212,6 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 					 in->filename, im_error_buffer ());
 				im_error_clear ();
 			} else {
-#ifdef HAVE_VIPS_BUFJPEG2VIPS
 				IMAGE *tmp;
 
 				g_debug ("Read EXIF thumbnail of size %lu",
@@ -220,7 +219,7 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 
 				// Close old in and process EXIF thumbnail instead (may need to shrink more)
 				if (!(tmp = im_open ("thumb", "t"))
-				    || im_bufjpeg2vips (ptr, *size, tmp)) {
+				    || im_bufjpeg2vips (ptr, *size, tmp, FALSE)) {
 					g_warning
 						("Could not open existing thumbnail: %s",
 						 im_error_buffer ());
@@ -228,10 +227,6 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 				}
 				im_close (in);
 				in = tmp;
-#else
-				g_warning
-					("Will not shrink existing thumbnail; no im_bufjpeg2vips support in VIPS");
-#endif /* HAVE_VIPS_BUFJPEG2VIPS */
 			}
 		} else {
 
