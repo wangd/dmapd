@@ -2,9 +2,7 @@
 Description=DMAP Service
 
 [Service]
-Type=forking
-PIDFile=/var/run/dmapd/dmapd.pid
-ExecStart=/usr/sbin/dmapd
+ExecStart=/usr/sbin/dmapd -f
 
 [Install]
 WantedBy=multi-user.target
