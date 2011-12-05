@@ -100,6 +100,8 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 					if (container_record) {
 						dmap_container_record_add_entry (container_record, NULL, id);
 					}
+				} else {
+					g_debug ("Skipped %s", path);
 				}
 			}
 			g_free (path);

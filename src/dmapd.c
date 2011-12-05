@@ -80,6 +80,8 @@ GMainLoop *loop;
 
 static GSList *music_dirs              = NULL;
 static GSList *picture_dirs            = NULL;
+static GSList *music_formats           = NULL;
+static GSList *picture_formats         = NULL;
 static gchar *db_dir                   = NULL;
 static gchar *lockpath                 = NULL;
 static gchar *pidpath                  = NULL;
@@ -108,20 +110,26 @@ free_globals (void)
 
 	slist_deep_free (music_dirs);
 	slist_deep_free (picture_dirs);
+	slist_deep_free (music_formats);
+	slist_deep_free (picture_formats);
 }
 
 static gboolean
-add_dir (const gchar *option_name,
-	 const gchar *value,
-	 gpointer data,
-	 GError **error)
+add_to_opt_list (const gchar *option_name,
+	         const gchar *value,
+	         gpointer data,
+	         GError **error)
 {
 	if (strcmp (option_name, "-m") == 0) {
 		music_dirs = g_slist_append (music_dirs, g_strdup (value));
 	} else if (strcmp (option_name, "-p") == 0) {
 		picture_dirs = g_slist_append (picture_dirs, g_strdup (value));
+	} else if (strcmp (option_name, "-M") == 0) {
+		music_formats = g_slist_append (music_formats, g_strdup (value));
+	} else if (strcmp (option_name, "-P") == 0) {
+		picture_formats = g_slist_append (picture_formats, g_strdup (value));
 	} else {
-		g_error ("Unsupported directory option: %s.", option_name);
+		g_error ("Unsupported option: %s.", option_name);
 	}
 	return TRUE;
 }
@@ -130,8 +138,10 @@ add_dir (const gchar *option_name,
 static GOptionEntry entries[] = {
 	{ "foreground", 'f', 0, G_OPTION_ARG_NONE, &foreground, "Do not fork; remain in foreground", NULL },
 	{ "name", 'n', 0, G_OPTION_ARG_STRING, &share_name, "Name of media shares", NULL },
-	{ "music-dir", 'm', 0, G_OPTION_ARG_CALLBACK, add_dir, "Music directory", NULL },
-	{ "picture-dir", 'p', 0, G_OPTION_ARG_CALLBACK, add_dir, "Picture directory", NULL },
+	{ "music-dir", 'm', 0, G_OPTION_ARG_CALLBACK, add_to_opt_list, "Music directory", NULL },
+	{ "picture-dir", 'p', 0, G_OPTION_ARG_CALLBACK, add_to_opt_list, "Picture directory", NULL },
+	{ "music-format", 'M', 0, G_OPTION_ARG_CALLBACK, add_to_opt_list, "Acceptable music format", NULL },
+	{ "picture-format", 'P', 0, G_OPTION_ARG_CALLBACK, add_to_opt_list, "Acceptable picture format", NULL },
 	{ "lockpath", 'l', 0, G_OPTION_ARG_STRING, &lockpath, "Path to lockfile", NULL },
 	{ "pidpath", 'i', 0, G_OPTION_ARG_STRING, &pidpath, "Path to PID file", NULL },
 	{ "db-dir", 'd', 0, G_OPTION_ARG_STRING, &db_dir, "Media database directory", NULL },
@@ -383,7 +393,8 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 static DMAPShare *
 serve (protocol_id_t protocol,
        DMAPRecordFactory *factory,
-       GSList *media_dirs)
+       GSList *media_dirs,
+       GSList *acceptable_formats)
 {
 	GSList *l;
 	DMAPDb *db;
@@ -393,8 +404,14 @@ serve (protocol_id_t protocol,
 
 	gchar *db_protocol_dir = g_strconcat (db_dir, "/", protocol_map[protocol], NULL);
 	g_assert (db_module);
+
 	db = DMAP_DB (object_from_module (TYPE_DMAPD_DMAP_DB, db_module, "db-dir", db_protocol_dir, "record-factory", factory, NULL));
 	g_assert (db);
+
+	if (acceptable_formats) {
+		g_object_set (db, "acceptable-formats", acceptable_formats, NULL);
+	}
+
 	container_db = DMAP_CONTAINER_DB (dmapd_dmap_container_db_new ());
 	builder = DB_BUILDER (object_from_module (TYPE_DB_BUILDER, "gdir", NULL));
 
@@ -423,7 +440,7 @@ read_keyfile (void)
 {
 	GError *error = NULL;
 	GKeyFile *keyfile;
-	gchar **dir;
+	gchar **value;
 	gint i;
 	gsize len;
 
@@ -440,13 +457,21 @@ read_keyfile (void)
 		transcode_mimetype = g_key_file_get_string  (keyfile, "Music", "Transcode-Mimetype", NULL);
 		rt_transcode       = g_key_file_get_boolean (keyfile, "Music", "Realtime-Transcode", NULL);
 
-		dir = g_key_file_get_string_list (keyfile, "Music", "Dirs", &len, NULL);
+		value = g_key_file_get_string_list (keyfile, "Music", "Dirs", &len, NULL);
 		for (i = 0; i < len; i++)
-			add_dir ("-m", dir[i], NULL, &error);
+			add_to_opt_list ("-m", value[i], NULL, &error);
 
-		dir = g_key_file_get_string_list (keyfile, "Picture", "Dirs", &len, NULL);
+		value = g_key_file_get_string_list (keyfile, "Music", "Acceptable-Formats", &len, NULL);
 		for (i = 0; i < len; i++)
-			add_dir ("-p", dir[i], NULL, &error);
+			add_to_opt_list ("-M", value[i], NULL, &error);
+
+		value = g_key_file_get_string_list (keyfile, "Picture", "Dirs", &len, NULL);
+		for (i = 0; i < len; i++)
+			add_to_opt_list ("-p", value[i], NULL, &error);
+
+		value = g_key_file_get_string_list (keyfile, "Picture", "Acceptable-Formats", &len, NULL);
+		for (i = 0; i < len; i++)
+			add_to_opt_list ("-p", value[i], NULL, &error);
 	}
 
 	g_key_file_free (keyfile);
@@ -675,7 +700,7 @@ int main (int argc, char *argv[])
 					"meta-reader",
 					av_meta_reader,
 					NULL));
-		workers.daap_share = DAAP_SHARE (serve (DAAP, factory, music_dirs));
+		workers.daap_share = DAAP_SHARE (serve (DAAP, factory, music_dirs, music_formats));
 #else
 		g_error ("DAAP support not present");
 #endif
@@ -692,7 +717,7 @@ int main (int argc, char *argv[])
 					"meta-reader",
 					photo_meta_reader,
 					NULL));
-		workers.dpap_share = DPAP_SHARE (serve (DPAP, factory, picture_dirs));
+		workers.dpap_share = DPAP_SHARE (serve (DPAP, factory, picture_dirs, picture_formats));
 #else
 		g_error ("DPAP support not present");
 #endif

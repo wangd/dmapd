@@ -33,12 +33,14 @@ struct DmapdDMAPDbGHashTablePrivate {
 	GHashTable *db;
 	gchar *db_dir;
 	DMAPRecordFactory *record_factory;
+	GSList *acceptable_formats;
 };
 
 enum {
         PROP_0,
 	PROP_DB_DIR,
-	PROP_RECORD_FACTORY
+	PROP_RECORD_FACTORY,
+	PROP_ACCEPTABLE_FORMATS
 };
 
 struct loc_id {
@@ -221,7 +223,7 @@ dmapd_dmap_db_ghashtable_add (DMAPDb *db, DMAPRecord *record)
 static guint
 dmapd_dmap_db_ghashtable_add_path (DMAPDb *db, const gchar *path)
 {
-	guint id;
+	guint id = 0;
 	DMAPRecord *record;
 	DMAPRecordFactory *factory = NULL;
 
@@ -230,10 +232,17 @@ dmapd_dmap_db_ghashtable_add_path (DMAPDb *db, const gchar *path)
 	record = dmap_record_factory_create (factory, (gpointer) path);
 
 	if (record) {
-		id = dmapd_dmap_db_ghashtable_add (db, record);
+		char *format = NULL;
+		GSList *acceptable_formats = NULL;
+
+		g_object_get (record, "format", &format, NULL);
+		g_object_get (db, "acceptable-formats", &acceptable_formats, NULL);
+
+		if (! acceptable_formats || g_slist_find_custom (acceptable_formats, format, strcmp)) {
+			id = dmapd_dmap_db_ghashtable_add (db, record);
+		}
+
 		g_object_unref (record);
-	} else {
-		id = 0;
 	}
 
 	return id;
@@ -314,6 +323,9 @@ dmapd_dmap_db_ghashtable_set_property (GObject *object,
 				g_object_unref (db->priv->record_factory);
 			db->priv->record_factory = DMAP_RECORD_FACTORY (g_value_get_pointer (value));
 			break;	
+		case PROP_ACCEPTABLE_FORMATS:
+			db->priv->acceptable_formats = g_value_get_pointer (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 			break;
@@ -335,6 +347,9 @@ dmapd_dmap_db_ghashtable_get_property (GObject *object,
 		case PROP_RECORD_FACTORY:
 			g_value_set_pointer (value, db->priv->record_factory);
 			break;	
+		case PROP_ACCEPTABLE_FORMATS:
+			g_value_set_pointer (value, db->priv->acceptable_formats);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 			break;
@@ -367,4 +382,10 @@ static void dmapd_dmap_db_ghashtable_class_init (DmapdDMAPDbGHashTableClass *kla
 							      "Directory for database cache",
 							      NULL,
 							      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class, PROP_ACCEPTABLE_FORMATS,
+					 g_param_spec_pointer ("acceptable-formats",
+					                       "Acceptable formats",
+							       "Acceptable formats",
+							        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }

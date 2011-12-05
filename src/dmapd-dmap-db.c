@@ -26,12 +26,14 @@
 struct DmapdDMAPDbPrivate {
 	gchar *db_dir;
 	DMAPRecordFactory *record_factory;
+	GSList *acceptable_formats;
 };
 
 enum {
 	PROP_0,
 	PROP_DB_DIR,
-	PROP_RECORD_FACTORY
+	PROP_RECORD_FACTORY,
+	PROP_ACCEPTABLE_FORMATS
 };
 
 static void dmapd_dmap_db_init (DmapdDMAPDb *db)
@@ -57,6 +59,9 @@ dmapd_dmap_db_set_property (GObject *object,
 				g_object_unref (db->priv->record_factory);
 			db->priv->record_factory = DMAP_RECORD_FACTORY (g_value_get_pointer (value));
 			break;	
+		case PROP_ACCEPTABLE_FORMATS:
+			db->priv->acceptable_formats = g_value_get_pointer (value);
+			break;	
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 			break;
@@ -78,6 +83,9 @@ dmapd_dmap_db_get_property (GObject *object,
 		case PROP_RECORD_FACTORY:
 			g_value_set_pointer (value, db->priv->record_factory);
 			break;	
+		case PROP_ACCEPTABLE_FORMATS:
+			g_value_set_pointer (value, db->priv->acceptable_formats);
+			break;	
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 			break;
@@ -98,6 +106,12 @@ static void dmapd_dmap_db_class_init (DmapdDMAPDbClass *klass)
 					 g_param_spec_pointer ("record-factory",
 							       "Record factory",
 							       "Record factory",
+					 		        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	
+	g_object_class_install_property (gobject_class, PROP_ACCEPTABLE_FORMATS,
+					 g_param_spec_pointer ("acceptable-formats",
+							       "Acceptable formats",
+							       "Acceptable formats",
 					 		        G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (gobject_class, PROP_DB_DIR,

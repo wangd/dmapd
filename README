@@ -57,6 +57,12 @@ Dmapd supports the following command line options:
 -p, --picture-dir
     Picture directory
 
+-M, --music-format
+    Acceptable music format
+
+-P, --picture-format
+    Acceptable picture format
+
 -l, --lockpath
     Path to lockfile
 
