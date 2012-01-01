@@ -156,7 +156,7 @@ static GOptionEntry entries[] = {
 };
 
 static char *
-default_share_name ()
+default_share_name (char *media_type)
 {
         const gchar *real_name;
 
@@ -165,7 +165,7 @@ default_share_name ()
                 real_name = g_get_user_name ();
         }
 
-        return g_strdup_printf ("%s's Media", real_name);
+        return g_strdup_printf ("%s's %s", real_name, media_type);
 }
 
 static DMAPShare *
@@ -175,12 +175,12 @@ create_share (protocol_id_t protocol, DMAPDb *db, DMAPContainerDb *container_db)
 
 	DMAPShare *share = NULL;
 
-	name = share_name ? share_name : default_share_name ();
-
 	g_debug ("Initializing %s sharing", protocol_map[protocol]);
 	if (protocol == DAAP) {
+		name = share_name ? g_strdup (share_name) : default_share_name ("Media");
 		share = DMAP_SHARE (daap_share_new (name, NULL, db, container_db, transcode_mimetype));
 	} else if (protocol == DPAP) {
+		name = share_name ? g_strdup (share_name) : default_share_name ("Pictures");
 		share = DMAP_SHARE (dpap_share_new (name, NULL, db, container_db, transcode_mimetype));
 	} else {
 		g_error ("Unknown share type");
