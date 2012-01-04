@@ -82,9 +82,9 @@ static GSList *music_dirs              = NULL;
 static GSList *picture_dirs            = NULL;
 static GSList *music_formats           = NULL;
 static GSList *picture_formats         = NULL;
-static gchar *db_dir                   = NULL;
-static gchar *lockpath                 = NULL;
-static gchar *pidpath                  = NULL;
+static gchar *db_dir                   = DBDIR;
+static gchar *lockpath                 = LOCKPATH;
+static gchar *pidpath                  = RUNDIR "/dmapd.pid";
 static gchar *user                     = NULL;
 static gchar *group                    = NULL;
 static gboolean render                 = FALSE;
@@ -220,7 +220,7 @@ static void
 daemonize (void)
 {
 	int child, fd;
-	char *_lockpath, *pid, *_pidpath;
+	char *pid;
 
 	child = fork ();
 
@@ -234,14 +234,12 @@ daemonize (void)
 
 	chdir (RUNDIR);
 
-	_lockpath = lockpath ? lockpath : LOCKPATH;
-	fd = open (_lockpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+	fd = open (lockpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 
 	if (lockf (fd, F_TLOCK, 0) < 0)
-		g_error ("Error opening lock file %s (does it already exist?)", _lockpath);
+		g_error ("Error opening lock file %s (does it already exist?)", lockpath);
 	
-	_pidpath = pidpath ? pidpath : RUNDIR "/dmapd.pid";
-	fd = open (_pidpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+	fd = open (pidpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 
 	pid = g_strdup_printf ("%d", getpid ());
 	write (fd, pid, strlen (pid));
@@ -435,6 +433,18 @@ serve (protocol_id_t protocol,
 	return share;
 }
 
+static gchar *
+key_file_s_or_default (GKeyFile *f, char *g, char *k, char *def)
+{
+	return g_key_file_get_string (f, g, k, NULL) ? g_key_file_get_string (f, g, k, NULL) : def;
+}
+
+static gboolean
+key_file_b_or_default (GKeyFile *f, char *g, char *k, gboolean def)
+{
+	return g_key_file_get_boolean (f, g, k, NULL) ? g_key_file_get_boolean (f, g, k, NULL) : def;
+}
+
 static void
 read_keyfile (void)
 {
@@ -449,13 +459,12 @@ read_keyfile (void)
 	if (!g_key_file_load_from_file (keyfile, CONFFILE, G_KEY_FILE_NONE, &error)) {
 		g_debug ("Could not read configuration file %s: %s", CONFFILE, error->message);
 	} else {
-
-		db_dir             = g_key_file_get_string  (keyfile, "General", "Database-Dir", NULL);
-		share_name         = g_key_file_get_string  (keyfile, "General", "Share-Name", NULL);
-		user               = g_key_file_get_string  (keyfile, "General", "User", NULL);
-		group              = g_key_file_get_string  (keyfile, "General", "Group", NULL);
-		transcode_mimetype = g_key_file_get_string  (keyfile, "Music", "Transcode-Mimetype", NULL);
-		rt_transcode       = g_key_file_get_boolean (keyfile, "Music", "Realtime-Transcode", NULL);
+		db_dir             = key_file_s_or_default (keyfile, "General", "Database-Dir", db_dir);
+		share_name         = key_file_s_or_default (keyfile, "General", "Share-Name", share_name);
+		user               = key_file_s_or_default (keyfile, "General", "User", user);
+		group              = key_file_s_or_default (keyfile, "General", "Group", group);
+		transcode_mimetype = key_file_s_or_default (keyfile, "Music", "Transcode-Mimetype", transcode_mimetype);
+		rt_transcode       = key_file_b_or_default (keyfile, "Music", "Realtime-Transcode", rt_transcode);
 
 		value = g_key_file_get_string_list (keyfile, "Music", "Dirs", &len, NULL);
 		for (i = 0; i < len; i++)

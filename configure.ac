@@ -18,14 +18,17 @@ AM_DISABLE_STATIC
 AC_PROG_CC
 AC_PROG_LIBTOOL
 
+DBDIR='${localstatedir}/db/dmapd'
+AC_SUBST(DBDIR)
+
 LOCKPATH='${localstatedir}/lock/subsys/dmapd'
 AC_SUBST(LOCKPATH)
 
-RUNDIR='${localstatedir}/run/dmapd'
-AC_SUBST(RUNDIR)
-
 MODULEDIR='${pkglibdir}/${VERSION}/modules'
 AC_SUBST(MODULEDIR)
+
+RUNDIR='${localstatedir}/run/dmapd'
+AC_SUBST(RUNDIR)
 
 SYSCONFDIR='${sysconfdir}'
 AC_SUBST(SYSCONFDIR)
