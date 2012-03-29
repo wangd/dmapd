@@ -328,7 +328,7 @@ _error:
 static gboolean
 av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *path)
 {
-	gchar *uri = g_strdup_printf ("file://%s", path);
+	gchar *uri = g_filename_to_uri (path, NULL, NULL);
 	GstFormat fmt = GST_FORMAT_TIME;
 	gint64 nanoduration;
 	GstTagList *tags = NULL;
