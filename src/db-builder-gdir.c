@@ -58,7 +58,7 @@ static void
 db_builder_gdir_build_db_starting_at (DbBuilder *builder, 
 				      const char *dir,
 				      DMAPDb *db,
-				      DMAPContainerDb *container_db,
+				      DMAPContainerDb *container_db, // NULL if we don't want directory containers.
 				      DMAPContainerRecord *container_record)
 {
 	GError *error = NULL;
@@ -76,10 +76,13 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 			if (g_file_test (path, G_FILE_TEST_IS_DIR)) {
 				DMAPContainerRecord *record = DMAP_CONTAINER_RECORD (g_object_new (TYPE_DMAPD_DMAP_CONTAINER_RECORD, "name", entry, "full-db", db, NULL));
 				db_builder_gdir_build_db_starting_at (builder, path, db, container_db, record);
-				if (dmap_container_record_get_entry_count (record) > 0)
-					dmap_container_db_add (container_db, record);
-				else
-					g_warning ("Container %s is empty, skipping", entry);
+				if (NULL != container_db) {
+					if (dmap_container_record_get_entry_count (record) > 0) {
+						dmap_container_db_add (container_db, record);
+					} else {
+						g_warning ("Container %s is empty, skipping", entry);
+					}
+				}
 				g_object_unref (record);
 			} else {
 				gchar *location;

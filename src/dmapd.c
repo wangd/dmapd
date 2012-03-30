@@ -78,26 +78,27 @@ typedef struct workers_t {
 
 GMainLoop *loop;
 
-static GSList *music_dirs              = NULL;
-static GSList *picture_dirs            = NULL;
-static GSList *music_formats           = NULL;
-static GSList *picture_formats         = NULL;
-static gchar *db_dir                   = DBDIR;
-static gchar *lockpath                 = LOCKPATH;
-static gchar *pidpath                  = RUNDIR "/dmapd.pid";
-static gchar *user                     = NULL;
-static gchar *group                    = NULL;
-static gboolean render                 = FALSE;
-static gboolean foreground             = FALSE;
-static gchar *share_name               = NULL;
-static gchar *transcode_mimetype       = NULL;
-static gboolean rt_transcode           = FALSE;
-static gchar *db_module                = NULL;
-static gchar *av_meta_reader_module    = NULL;
-static gchar *av_render_module         = NULL;
-static gchar *photo_meta_reader_module = NULL;
-static guint  max_thumbnail_width      = 128;
-static gboolean version                = FALSE;
+static GSList  *music_dirs               = NULL;
+static GSList  *picture_dirs             = NULL;
+static GSList  *music_formats            = NULL;
+static GSList  *picture_formats          = NULL;
+static gchar   *db_dir                   = DBDIR;
+static gchar   *lockpath                 = LOCKPATH;
+static gchar   *pidpath                  = RUNDIR "/dmapd.pid";
+static gchar   *user                     = NULL;
+static gchar   *group                    = NULL;
+static gchar   *share_name               = NULL;
+static gchar   *transcode_mimetype       = NULL;
+static gchar   *db_module                = NULL;
+static gchar   *av_meta_reader_module    = NULL;
+static gchar   *av_render_module         = NULL;
+static gchar   *photo_meta_reader_module = NULL;
+static guint    max_thumbnail_width      = 128;
+static gboolean enable_dir_containers    = FALSE;
+static gboolean enable_foreground        = FALSE;
+static gboolean enable_render            = FALSE;
+static gboolean enable_rt_transcode      = FALSE;
+static gboolean enable_version           = FALSE;
 
 // FIXME: make non-global, support mult. remotes and free when done.
 // store persistently or set in config file?
@@ -136,7 +137,7 @@ add_to_opt_list (const gchar *option_name,
 
 /* FIXME: how to enumerate available transcoding formats? */
 static GOptionEntry entries[] = {
-	{ "foreground", 'f', 0, G_OPTION_ARG_NONE, &foreground, "Do not fork; remain in foreground", NULL },
+	{ "foreground", 'f', 0, G_OPTION_ARG_NONE, &enable_foreground, "Do not fork; remain in foreground", NULL },
 	{ "name", 'n', 0, G_OPTION_ARG_STRING, &share_name, "Name of media shares", NULL },
 	{ "music-dir", 'm', 0, G_OPTION_ARG_CALLBACK, add_to_opt_list, "Music directory", NULL },
 	{ "picture-dir", 'p', 0, G_OPTION_ARG_CALLBACK, add_to_opt_list, "Picture directory", NULL },
@@ -147,11 +148,12 @@ static GOptionEntry entries[] = {
 	{ "db-dir", 'd', 0, G_OPTION_ARG_STRING, &db_dir, "Media database directory", NULL },
 	{ "user", 'u', 0, G_OPTION_ARG_STRING, &user, "User to run as", NULL },
 	{ "group", 'g', 0, G_OPTION_ARG_STRING, &group, "Group to run as", NULL },
-	{ "render", 'o', 0, G_OPTION_ARG_NONE, &render, "Render using AirPlay", NULL },
+	{ "render", 'o', 0, G_OPTION_ARG_NONE, &enable_render, "Render using AirPlay", NULL },
 	{ "transcode-mimetype", 't', 0, G_OPTION_ARG_STRING, &transcode_mimetype, "Target MIME type for transcoding", NULL },
-	{ "rt-transcode", 'r', 0, G_OPTION_ARG_NONE, &rt_transcode, "Perform transcoding in real-time", NULL },
+	{ "rt-transcode", 'r', 0, G_OPTION_ARG_NONE, &enable_rt_transcode, "Perform transcoding in real-time", NULL },
 	{ "max-thumbnail-width", 'w', 0, G_OPTION_ARG_INT, &max_thumbnail_width, "Maximum thumbnail size (may reduce memory use)", NULL },
-	{ "version", 'v', 0, G_OPTION_ARG_NONE, &version, "Print version number and exit", NULL },
+	{ "directory-containers", 'c', 0, G_OPTION_ARG_NONE, &enable_dir_containers, "Serve DMAP containers based on filesystem heirarchy", NULL },
+	{ "version", 'v', 0, G_OPTION_ARG_NONE, &enable_version, "Print version number and exit", NULL },
 	{ NULL }
 };
 
@@ -414,10 +416,14 @@ serve (protocol_id_t protocol,
 	builder = DB_BUILDER (object_from_module (TYPE_DB_BUILDER, "gdir", NULL));
 
 	for (l = media_dirs; l; l = l->next) {
-		db_builder_build_db_starting_at (builder, l->data, db, container_db, NULL);
+		if (enable_dir_containers) {
+			db_builder_build_db_starting_at (builder, l->data, db, container_db, NULL);
+		} else {
+			db_builder_build_db_starting_at (builder, l->data, db, NULL, NULL);
+		}
 	}
 
-	if (protocol == DAAP && transcode_mimetype && ! rt_transcode)
+	if (protocol == DAAP && transcode_mimetype && ! enable_rt_transcode)
 		dmap_db_foreach (db, (GHFunc) transcode_cache, db_protocol_dir);
 
 	loop = g_main_loop_new (NULL, FALSE);
@@ -459,12 +465,13 @@ read_keyfile (void)
 	if (!g_key_file_load_from_file (keyfile, CONFFILE, G_KEY_FILE_NONE, &error)) {
 		g_debug ("Could not read configuration file %s: %s", CONFFILE, error->message);
 	} else {
-		db_dir             = key_file_s_or_default (keyfile, "General", "Database-Dir", db_dir);
-		share_name         = key_file_s_or_default (keyfile, "General", "Share-Name", share_name);
-		user               = key_file_s_or_default (keyfile, "General", "User", user);
-		group              = key_file_s_or_default (keyfile, "General", "Group", group);
-		transcode_mimetype = key_file_s_or_default (keyfile, "Music", "Transcode-Mimetype", transcode_mimetype);
-		rt_transcode       = key_file_b_or_default (keyfile, "Music", "Realtime-Transcode", rt_transcode);
+		db_dir                = key_file_s_or_default (keyfile, "General", "Database-Dir", db_dir);
+		share_name            = key_file_s_or_default (keyfile, "General", "Share-Name", share_name);
+		user                  = key_file_s_or_default (keyfile, "General", "User", user);
+		group                 = key_file_s_or_default (keyfile, "General", "Group", group);
+		enable_dir_containers = key_file_b_or_default (keyfile, "General", "Dir-Containers", enable_dir_containers);
+		transcode_mimetype    = key_file_s_or_default (keyfile, "Music", "Transcode-Mimetype", transcode_mimetype);
+		enable_rt_transcode   = key_file_b_or_default (keyfile, "Music", "Realtime-Transcode", enable_rt_transcode);
 
 		value = g_key_file_get_string_list (keyfile, "Music", "Dirs", &len, NULL);
 		for (i = 0; i < len; i++)
@@ -657,7 +664,7 @@ int main (int argc, char *argv[])
 		g_error ("Option parsing failed: %s", error->message);
 	}
 
-	if (version) {
+	if (enable_version) {
 		g_print ("dmapd version %s\n", VERSION);
 		exit (EXIT_SUCCESS);
 	}
@@ -684,7 +691,7 @@ int main (int argc, char *argv[])
 		}
 	}
 
-	if (! (music_dirs || picture_dirs || render)) {
+	if (! (music_dirs || picture_dirs || enable_render)) {
 		g_print ("%s", g_option_context_get_help (context, TRUE, NULL));
 		g_print ("Must provide '-m', '-p' or '-o' option\n");
 		exit(EXIT_FAILURE);
@@ -692,7 +699,7 @@ int main (int argc, char *argv[])
 
 	g_option_context_free (context);
 
-	if (! foreground) {
+	if (! enable_foreground) {
 		daemonize ();
 	}
 
@@ -732,7 +739,7 @@ int main (int argc, char *argv[])
 #endif
 	}
 
-	if (render && workers.av_render) {
+	if (enable_render && workers.av_render) {
 #ifdef WITH_DACP
 		GError *error = NULL;
 		DMAPMdnsBrowser *browser = dmap_mdns_browser_new (DMAP_MDNS_BROWSER_SERVICE_TYPE_RAOP);
