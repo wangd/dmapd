@@ -21,7 +21,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <glib/ghash.h>
+#include <glib.h>
 
 #include "util.h"
 #include "dmapd-dmap-db-ghashtable.h"

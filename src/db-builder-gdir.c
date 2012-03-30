@@ -22,7 +22,6 @@
 #include "db-builder-gdir.h"
 
 #include <glib.h>
-#include <glib-object.h>
 
 /*
 struct DbBuilderGDirPrivate {

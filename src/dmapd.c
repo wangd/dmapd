@@ -22,6 +22,7 @@
 
 #include <config.h>
 #include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -32,7 +33,6 @@
 #include <pwd.h>
 #include <grp.h>
 #include <glib.h>
-#include <glib/gprintf.h>
 #include <libdmapsharing/dmap.h>
 
 #include "dmapd-dmap-container-record.h"
