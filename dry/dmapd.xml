@@ -106,6 +106,14 @@ Dmapd supports the following command line options:
 		<term>-r, --rt-transcode</term>
 		<listitem>Perform transcoding in real-time</listitem>
 	</varlistentry>
+	<varlistentry>
+		<term>-w, --max-thumbnail-width</term>
+		<listitem>Maximum thumbnail size (may reduce memory use)</listitem>
+	</varlistentry>
+	<varlistentry>
+		<term>-c, --directory-containers</term>
+		<listitem>Serve DMAP containers based on filesystem heirarchy</listitem>
+	</varlistentry>
 </variablelist>
 
 <para>

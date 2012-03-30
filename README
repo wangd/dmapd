@@ -84,6 +84,12 @@ Dmapd supports the following command line options:
 -r, --rt-transcode
     Perform transcoding in real-time
 
+-w, --max-thumbnail-width
+    Maximum thumbnail size (may reduce memory use)
+
+-c, --directory-containers
+    Serve DMAP containers based on filesystem heirarchy
+
 Dmapd supports the following environment variables:
 
 DMAPD_DEBUG
