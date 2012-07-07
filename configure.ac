@@ -168,7 +168,7 @@ AC_SUBST(MAGICK_CFLAGS)
 AC_SUBST(MAGICK_LIBS)
 
 dnl Check for libvips, used for DPAP thumbnailing
-PKG_CHECK_MODULES(VIPS, vips-7.26,
+PKG_CHECK_MODULES(VIPS, vips-7.28,
   HAVE_VIPS=yes,
   HAVE_VIPS=no)
 
