@@ -248,7 +248,7 @@ dmapd_dpap_record_set_from_blob (DMAPRecord *_record, GByteArray *blob)
 		g_byte_array_unref (thumbnail_array);
 		ptr += size;
 	} else {
-		g_object_set (record, "thumbnail", NULL, NULL);
+		g_object_set (record, "thumbnail",  g_byte_array_sized_new (0), NULL);
 	}
 
 	g_object_set (record, "aspect-ratio", (char *) ptr, NULL);
