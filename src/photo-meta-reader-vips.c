@@ -115,7 +115,7 @@ sharpen_filter (void)
 static int
 shrink_factor (PhotoMetaReader * reader, IMAGE * in, IMAGE * out)
 {
-	IMAGE *t[9];
+	IMAGE *t[4];
 	IMAGE *x;
 	int shrink;
 	double residual;
@@ -131,7 +131,7 @@ shrink_factor (PhotoMetaReader * reader, IMAGE * in, IMAGE * out)
 	else
 		interp = vips_interpolate_bilinear_static ();
 
-	if (im_open_local_array (out, t, 9, "thumbnail", "p"))
+	if (im_open_local_array (out, t, 4, "thumbnail", "p"))
 		return (-1);
 	x = in;
 
@@ -139,37 +139,37 @@ shrink_factor (PhotoMetaReader * reader, IMAGE * in, IMAGE * out)
 	 */
 	if (x->Coding == IM_CODING_LABQ) {
 		g_debug ("in im_LabQ2disp");
-		if (im_LabQ2disp (x, t[1], im_col_displays (7)))
+		if (im_LabQ2disp (x, t[0], im_col_displays (7)))
 			return (-1);
 		g_debug ("Done");
-		x = t[1];
+		x = t[0];
 	} else if (x->Coding == IM_CODING_RAD) {
 		g_debug ("in im_rad2float");
-		if (im_rad2float (x, t[1]))
+		if (im_rad2float (x, t[0]))
 			return (-1);
 		g_debug ("Done");
-		x = t[1];
+		x = t[0];
 	}
 
 	/* Shrink!
 	 */
 	g_debug ("Shrinking");
-	if (im_shrink (x, t[2], shrink, shrink) ||
-	    im_affinei_all (t[2], t[3],
+	if (im_shrink (x, t[1], shrink, shrink) ||
+	    im_affinei_all (t[1], t[2],
 			    interp, residual, 0, 0, residual, 0, 0))
 		return (-1);
 	g_debug ("Shrinking done");
-	x = t[3];
+	x = t[2];
 
 	/* If we are upsampling, don't sharpen, since nearest looks dumb
 	 * sharpened.
 	 */
 	if (residual > 1.0) {
 		g_debug ("Sharpening");
-		if (im_conv (x, t[4], sharpen_filter ()))
+		if (im_conv (x, t[3], sharpen_filter ()))
 			return (-1);
 		g_debug ("Sharpening done");
-		x = t[4];
+		x = t[3];
 	}
 
 	/* FIXME: valgrind leak? */
