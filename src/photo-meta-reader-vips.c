@@ -40,8 +40,15 @@ struct PhotoMetaReaderVipsPrivate {
 static GOptionGroup *
 photo_meta_reader_vips_get_option_group (PhotoMetaReader * reader)
 {
-	im_init_world ("dmapd");
-	return im_get_option_group ();
+	vips_init ("dmapd");
+
+	/* VIPS caches operations, but this ends up in a lot of open file descriptors.
+	 * This might change, but for now let's reduce the cache size.
+	 * See vips-devel mailing list, Subj: im_open with "rd" mode, 14 July 2012.
+	 */
+	vips_cache_set_max(1);
+
+	return vips_get_option_group ();
 }
 
 /* Calculate the shrink factors. 
@@ -113,10 +120,10 @@ sharpen_filter (void)
 }
 
 static int
-shrink_factor (PhotoMetaReader * reader, IMAGE * in, IMAGE * out)
+shrink_factor (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 {
-	IMAGE *t[4];
-	IMAGE *x;
+	VipsImage *t[4];
+	VipsImage *x;
 	int shrink;
 	double residual;
 	VipsInterpolate *interp;
@@ -180,11 +187,11 @@ shrink_factor (PhotoMetaReader * reader, IMAGE * in, IMAGE * out)
 }
 
 static int
-thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
+thumbnail (PhotoMetaReader * reader, VipsImage * in, VipsFormatClass * format,
 	   void **thumb, size_t * size)
 {
 	gint fd;
-	IMAGE *out;
+	VipsImage *out;
 	int multiscan;
 	gchar *thumbpath;
 	gchar *tmpfile = NULL;
@@ -202,42 +209,42 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 		int shrink;
 		char buf[FILENAME_MAX];
 
-		if (im_header_get_typeof (in, "jpeg-thumbnail-data")) {
+		if (vips_image_get_typeof (in, "jpeg-thumbnail-data")) {
 			void *ptr;
 
-			if (im_meta_get_blob
+			if (vips_image_get_blob
 			    (in, "jpeg-thumbnail-data", &ptr, size)) {
 				g_warning
 					("Failed to read EXIF thumbnail %s: %s",
-					 in->filename, im_error_buffer ());
-				im_error_clear ();
+					 in->filename, vips_error_buffer ());
+				vips_error_clear ();
 			} else {
-				IMAGE *tmp;
+				VipsImage *tmp;
 
 				g_debug ("Read EXIF thumbnail of size %lu",
 					 *size);
 
 				// Close old in and process EXIF thumbnail instead (may need to shrink more)
-				if (!(tmp = im_open ("thumb", "t"))
+				if (!(tmp = vips_image_new_mode ("thumb", "t"))
 				    || im_bufjpeg2vips (ptr, *size, tmp, FALSE)) {
 					g_warning
 						("Could not open existing thumbnail: %s",
-						 im_error_buffer ());
+						 vips_error_buffer ());
 					goto _done_no_out;
 				}
-				im_close (in);
+				g_object_unref (in);
 				in = tmp;
 			}
 		} else {
 
-			if (im_header_get_typeof (in, "jpeg-multiscan")) {
-				if (im_header_int
+			if (vips_image_get_typeof (in, "jpeg-multiscan")) {
+				if (vips_image_get_int
 				    (in, "jpeg-multiscan", &multiscan)) {
 					g_warning
 						("Failed to determine if %s multiscan: %s",
 						 in->filename,
-						 im_error_buffer ());
-					im_error_clear ();
+						 vips_error_buffer ());
+					vips_error_clear ();
 					goto _done_no_out;
 				}
 				if (multiscan) {
@@ -260,11 +267,11 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 			else
 				shrink = 1;
 
-			im_snprintf (buf, FILENAME_MAX, "%s:%d", in->filename,
+			snprintf (buf, FILENAME_MAX, "%s:%d", in->filename,
 				     shrink);
 			g_debug ("Opening %s:%d", in->filename, shrink);
-			im_close (in);
-			if (!(in = im_open (buf, "rd"))) {
+			g_object_unref (in);
+			if (!(in = vips_image_new_mode (buf, "rd"))) {
 				g_warning ("Could not open %s", buf);
 				goto _done_no_out;
 			}
@@ -278,8 +285,8 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 			 error->message);
 	}
 	close (fd);
-	if (!(out = im_open (thumbpath, "w"))) {
-		im_close (in);
+	if (!(out = vips_image_new_mode (thumbpath, "w"))) {
+		g_object_unref (in);
 		g_free (thumbpath);
 		goto _done_no_out;
 	}
@@ -298,10 +305,10 @@ thumbnail (PhotoMetaReader * reader, IMAGE * in, VipsFormatClass * format,
 	g_unlink (tmpfile);
 	g_free (thumbpath);
 
-	im_close (out);
+	g_object_unref (out);
 
       _done_no_out:
-	im_close (in);
+	g_object_unref (in);
 
 	return got_thumb;
 }
@@ -310,7 +317,7 @@ static gboolean
 photo_meta_reader_vips_read (PhotoMetaReader * reader,
 			     DPAPRecord * record, const gchar * path)
 {
-	IMAGE *im;
+	VipsImage *im;
 	int x, y;
 	gboolean fnval = FALSE;
 	VipsFormatClass *format;
@@ -329,7 +336,7 @@ photo_meta_reader_vips_read (PhotoMetaReader * reader,
 		goto _done_no_im;
 	}
 
-	if (!(im = im_open (path, "rd"))) {
+	if (!(im = vips_image_new_mode (path, "rd"))) {
 		g_warning ("Could not open %s", path);
 		goto _done_no_im;
 	}
@@ -361,21 +368,21 @@ photo_meta_reader_vips_read (PhotoMetaReader * reader,
 	g_object_set (record, "aspect-ratio", aspect_ratio_str, NULL);
 	g_free (aspect_ratio_str);
 
-	if (im_header_get_typeof (im, "exif-User Comment")) {
-		if (im_meta_get_string (im, "exif-User Comment", &exif_str)) {
+	if (vips_image_get_typeof (im, "exif-User Comment")) {
+		if (vips_image_get_string (im, "exif-User Comment", &exif_str)) {
 			g_warning ("Failed to read comments from %s: %s",
-				   im->filename, im_error_buffer ());
-			im_error_clear ();
+				   im->filename, vips_error_buffer ());
+			vips_error_clear ();
 		} else {
 			g_object_set (record, "comments", exif_str, NULL);
 		}
 	}
 
-	if (im_header_get_typeof (im, "exif-Date and Time")) {
-		if (im_meta_get_string (im, "exif-Date and Time", &exif_str)) {
+	if (vips_image_get_typeof (im, "exif-Date and Time")) {
+		if (vips_image_get_string (im, "exif-Date and Time", &exif_str)) {
 			g_warning ("Failed to read timestamp from %s: %s",
-				   im->filename, im_error_buffer ());
-			im_error_clear ();
+				   im->filename, vips_error_buffer ());
+			vips_error_clear ();
 		} else {
 			// Format is: "2007:10:05 00:20:26 (ASCII, 20 bytes)".
 			long l, timestamp;
