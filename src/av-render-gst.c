@@ -76,6 +76,7 @@ av_render_gst_now_playing_artwork (DACPPlayer * player, guint width,
 				 guint height)
 {
 	g_warning ("Now playing artwork not implemented");
+	return NULL;
 }
 
 void

@@ -83,7 +83,7 @@ dmapd_daap_record_set_property (GObject *object,
 	DmapdDAAPRecord *record = DMAPD_DAAP_RECORD (object);
 
 	switch (prop_id) {
-		char *str;
+		const char *str;
 		case PROP_LOCATION:
 			g_free (record->priv->location);
 			record->priv->location = g_value_dup_string (value);

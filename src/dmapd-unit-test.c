@@ -27,6 +27,7 @@
 
 #include "dmapd-test-daap-record.h"
 #include "dmapd-test-parse-plugin-option.h"
+#include "util.h"
 
 static void
 debug_null (const char *log_domain,

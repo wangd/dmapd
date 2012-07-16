@@ -238,7 +238,7 @@ dmapd_dmap_db_ghashtable_add_path (DMAPDb *db, const gchar *path)
 		g_object_get (record, "format", &format, NULL);
 		g_object_get (db, "acceptable-formats", &acceptable_formats, NULL);
 
-		if (! acceptable_formats || g_slist_find_custom (acceptable_formats, format, strcmp)) {
+		if (! acceptable_formats || g_slist_find_custom (acceptable_formats, format, (GCompareFunc) strcmp)) {
 			id = dmapd_dmap_db_ghashtable_add (db, record);
 		}
 

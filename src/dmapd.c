@@ -258,7 +258,7 @@ debug_printf (const char *log_domain,
 	      const gchar *message,
 	      gpointer user_data)
 {
-	g_printf ("%s\n", message);
+	g_print ("%s\n", message);
 }
 
 static void
@@ -507,6 +507,7 @@ dacp_add_guid_cb (DACPShare *share, gchar *guid, gpointer user_data)
 {
 	// FIXME: handle multiple remotes? See also defn of _guid.
 	_guid = g_strdup (guid);
+	return TRUE;
 }
 
 static gboolean
@@ -539,7 +540,7 @@ raop_service_added_cb (DMAPMdnsBrowser *browser, DMAPMdnsBrowserService *service
 {
 	gchar *host = NULL;
 
-	g_debug ("service added %s:%s:%s:%d (%s)", service->service_name, service->name, service->host, service->port);
+	g_debug ("service added %s:%s:%s:%d", service->service_name, service->name, service->host, service->port);
 
 	g_object_get (workers->av_render, "host", &host, NULL);
 
@@ -554,8 +555,8 @@ raop_service_added_cb (DMAPMdnsBrowser *browser, DMAPMdnsBrowserService *service
 			DMAPDb *db;
 			DMAPContainerDb *container_db;
 
-			g_object_set (workers->av_render, "port", service->port);
-			g_object_set (workers->av_render, "transport-protocol", service->transport_protocol);
+			g_object_set (workers->av_render, "port", service->port, NULL);
+			g_object_set (workers->av_render, "transport-protocol", service->transport_protocol, NULL);
 
 			// FIXME: set other properties (protocol, generation) from mDNS!
 			
