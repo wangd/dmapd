@@ -48,7 +48,7 @@
 #include "photo-meta-reader.h"
 #include "util.h"
 
-#define CONFFILE SYSCONFDIR           "/dmapd.conf"
+#define DEFAULT_CONFIG_FILE            SYSCONFDIR "/dmapd.conf"
 #define DEFAULT_DB_MOD                "ghashtable"
 #define DEFAULT_AV_META_READER_MOD    "gst"
 #define DEFAULT_AV_RENDER_MOD         "gst"
@@ -82,8 +82,11 @@ static GSList  *music_dirs               = NULL;
 static GSList  *picture_dirs             = NULL;
 static GSList  *music_formats            = NULL;
 static GSList  *picture_formats          = NULL;
+static gchar   *config_file              = DEFAULT_CONFIG_FILE;
 static gchar   *db_dir                   = DBDIR;
 static gchar   *lockpath                 = LOCKPATH;
+static gchar   *music_password           = NULL;
+static gchar   *picture_password         = NULL;
 static gchar   *pidpath                  = RUNDIR "/dmapd.pid";
 static gchar   *user                     = NULL;
 static gchar   *group                    = NULL;
@@ -180,10 +183,10 @@ create_share (protocol_id_t protocol, DMAPDb *db, DMAPContainerDb *container_db)
 	g_debug ("Initializing %s sharing", protocol_map[protocol]);
 	if (protocol == DAAP) {
 		name = share_name ? g_strdup (share_name) : default_share_name ("Media");
-		share = DMAP_SHARE (daap_share_new (name, NULL, db, container_db, transcode_mimetype));
+		share = DMAP_SHARE (daap_share_new (name, music_password, db, container_db, transcode_mimetype));
 	} else if (protocol == DPAP) {
 		name = share_name ? g_strdup (share_name) : default_share_name ("Pictures");
-		share = DMAP_SHARE (dpap_share_new (name, NULL, db, container_db, transcode_mimetype));
+		share = DMAP_SHARE (dpap_share_new (name, picture_password, db, container_db, transcode_mimetype));
 	} else {
 		g_error ("Unknown share type");
 	}
@@ -462,8 +465,8 @@ read_keyfile (void)
 
 	keyfile = g_key_file_new ();
 
-	if (!g_key_file_load_from_file (keyfile, CONFFILE, G_KEY_FILE_NONE, &error)) {
-		g_debug ("Could not read configuration file %s: %s", CONFFILE, error->message);
+	if (!g_key_file_load_from_file (keyfile, config_file, G_KEY_FILE_NONE, &error)) {
+		g_debug ("Could not read configuration file %s: %s", config_file, error->message);
 	} else {
 		db_dir                = key_file_s_or_default (keyfile, "General", "Database-Dir", db_dir);
 		share_name            = key_file_s_or_default (keyfile, "General", "Share-Name", share_name);
@@ -472,6 +475,8 @@ read_keyfile (void)
 		enable_dir_containers = key_file_b_or_default (keyfile, "General", "Dir-Containers", enable_dir_containers);
 		transcode_mimetype    = key_file_s_or_default (keyfile, "Music", "Transcode-Mimetype", transcode_mimetype);
 		enable_rt_transcode   = key_file_b_or_default (keyfile, "Music", "Realtime-Transcode", enable_rt_transcode);
+		music_password        = key_file_s_or_default (keyfile, "Music", "Password", music_password);
+		picture_password      = key_file_s_or_default (keyfile, "Picture", "Password", picture_password);
 
 		value = g_key_file_get_string_list (keyfile, "Music", "Dirs", &len, NULL);
 		for (i = 0; i < len; i++)
@@ -608,6 +613,8 @@ int main (int argc, char *argv[])
 		g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, debug_null, NULL);
 	}
 
+	// These must appear before parsing command-line options because
+	// they contribute to which options are available.
 	av_meta_reader_module = getenv ("DMAPD_AV_META_READER_MODULE");
 	av_meta_reader_module = av_meta_reader_module ? av_meta_reader_module : DEFAULT_AV_META_READER_MOD;
 
@@ -619,6 +626,10 @@ int main (int argc, char *argv[])
 
 	db_module = getenv ("DMAPD_DB_MODULE");
 	db_module = db_module ? db_module : DEFAULT_DB_MOD;
+
+	// This must be before read_keyfile ().
+	config_file = getenv ("DMAPD_CONFIG_FILE");
+	config_file = config_file ? config_file : DEFAULT_CONFIG_FILE;
 
 	context = g_option_context_new ("-m | -p: serve media using DMAP");
 	g_option_context_add_main_entries (context, entries, NULL);
