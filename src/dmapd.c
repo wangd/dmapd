@@ -48,7 +48,7 @@
 #include "photo-meta-reader.h"
 #include "util.h"
 
-#define DEFAULT_CONFIG_FILE            SYSCONFDIR "/dmapd.conf"
+#define DEFAULT_CONFIG_FILE            DEFAULT_SYSCONFDIR "/dmapd.conf"
 #define DEFAULT_DB_MOD                "ghashtable"
 #define DEFAULT_AV_META_READER_MOD    "gst"
 #define DEFAULT_AV_RENDER_MOD         "gst"
@@ -82,12 +82,13 @@ static GSList  *music_dirs               = NULL;
 static GSList  *picture_dirs             = NULL;
 static GSList  *music_formats            = NULL;
 static GSList  *picture_formats          = NULL;
+static gchar   *module_dir               = NULL;
 static gchar   *config_file              = DEFAULT_CONFIG_FILE;
-static gchar   *db_dir                   = DBDIR;
-static gchar   *lockpath                 = LOCKPATH;
+static gchar   *db_dir                   = DEFAULT_DBDIR;
+static gchar   *lockpath                 = DEFAULT_LOCKPATH;
 static gchar   *music_password           = NULL;
 static gchar   *picture_password         = NULL;
-static gchar   *pidpath                  = RUNDIR "/dmapd.pid";
+static gchar   *pidpath                  = DEFAULT_RUNDIR "/dmapd.pid";
 static gchar   *user                     = NULL;
 static gchar   *group                    = NULL;
 static gchar   *share_name               = NULL;
@@ -237,7 +238,7 @@ daemonize (void)
 	
 	setsid ();
 
-	chdir (RUNDIR);
+	chdir (DEFAULT_RUNDIR);
 
 	fd = open (lockpath, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 
@@ -408,7 +409,14 @@ serve (protocol_id_t protocol,
 	gchar *db_protocol_dir = g_strconcat (db_dir, "/", protocol_map[protocol], NULL);
 	g_assert (db_module);
 
-	db = DMAP_DB (object_from_module (TYPE_DMAPD_DMAP_DB, db_module, "db-dir", db_protocol_dir, "record-factory", factory, NULL));
+	db = DMAP_DB (object_from_module (TYPE_DMAPD_DMAP_DB, 
+	                                  module_dir,
+					  db_module,
+					  "db-dir",
+					  db_protocol_dir,
+					  "record-factory",
+					  factory,
+					  NULL));
 	g_assert (db);
 
 	if (acceptable_formats) {
@@ -416,7 +424,7 @@ serve (protocol_id_t protocol,
 	}
 
 	container_db = DMAP_CONTAINER_DB (dmapd_dmap_container_db_new ());
-	builder = DB_BUILDER (object_from_module (TYPE_DB_BUILDER, "gdir", NULL));
+	builder = DB_BUILDER (object_from_module (TYPE_DB_BUILDER, module_dir, "gdir", NULL));
 
 	for (l = media_dirs; l; l = l->next) {
 		if (enable_dir_containers) {
@@ -615,6 +623,9 @@ int main (int argc, char *argv[])
 
 	// These must appear before parsing command-line options because
 	// they contribute to which options are available.
+	module_dir = getenv ("DMAPD_MODULEDIR");
+	module_dir = module_dir ? module_dir : DEFAULT_MODULEDIR;
+	
 	av_meta_reader_module = getenv ("DMAPD_AV_META_READER_MODULE");
 	av_meta_reader_module = av_meta_reader_module ? av_meta_reader_module : DEFAULT_AV_META_READER_MOD;
 
@@ -636,7 +647,10 @@ int main (int argc, char *argv[])
 
 	if (strcmp (av_meta_reader_module, "null") != 0) {
 		GOptionGroup *group;
-		av_meta_reader = AV_META_READER (object_from_module (TYPE_AV_META_READER, av_meta_reader_module, NULL));
+		av_meta_reader = AV_META_READER (object_from_module (TYPE_AV_META_READER,
+		                                                     module_dir,
+								     av_meta_reader_module,
+								     NULL));
 		if (av_meta_reader) {
 			group = av_meta_reader_get_option_group (av_meta_reader);
 			if (group)
@@ -648,7 +662,10 @@ int main (int argc, char *argv[])
 		GOptionGroup *group;
 		GHashTable *options = g_hash_table_new (g_str_hash, g_str_equal);
 		gchar *mod = parse_plugin_option (av_render_module, options);
-		workers.av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER, mod, NULL));
+		workers.av_render = AV_RENDER (object_from_module (TYPE_AV_RENDER,
+		                                                   module_dir,
+								   mod,
+								   NULL));
 		g_object_set (workers.av_render, "host", g_hash_table_lookup (options, "host"), NULL);
 		if (workers.av_render) {
 			group = av_render_get_option_group (workers.av_render);
@@ -661,6 +678,7 @@ int main (int argc, char *argv[])
 	if (strcmp (photo_meta_reader_module, "null") != 0) {
 		GOptionGroup *group;
 		photo_meta_reader = PHOTO_META_READER (object_from_module (TYPE_PHOTO_META_READER,
+									   module_dir,
 		                                                           photo_meta_reader_module,
 									   NULL));
 		if (photo_meta_reader) {

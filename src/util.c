@@ -191,7 +191,7 @@ find_plugin_template (GType type)
 
 
 GObject *
-object_from_module (GType type, const gchar *module_name, const gchar *first_property_name, ...)
+object_from_module (GType type, const gchar *module_dir, const gchar *module_name, const gchar *first_property_name, ...)
 {
 	va_list ap;
 	GType *filters = NULL;
@@ -216,7 +216,7 @@ object_from_module (GType type, const gchar *module_name, const gchar *first_pro
 		fnval = g_object_new_valist (child_type, first_property_name, ap);
 	} else {
 		module_filename = g_strdup_printf (fmt, module_name);
-		module_path = g_module_build_path (MODULEDIR, module_filename);
+		module_path = g_module_build_path (module_dir, module_filename);
 
 		module = dmapd_module_new (module_path);
 		if (module == NULL || ! g_type_module_use (G_TYPE_MODULE (module))) {

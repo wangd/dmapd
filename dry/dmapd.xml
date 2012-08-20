@@ -130,6 +130,10 @@ Dmapd supports the following environment variables:
 		<listitem>Path to an alternate configuration file</listitem>
 	</varlistentry>
 	<varlistentry>
+		<term>DMAPD_MODULEDIR</term>
+		<listitem>Directory containing dmapd modules</listitem>
+	</varlistentry>
+	<varlistentry>
 		<term>DMAPD_AV_META_READER_MODULE</term>
 		<listitem>Name of an alternate AV module</listitem>
 	</varlistentry>

@@ -50,7 +50,11 @@ void stringleton_unref (const gchar *str);
 
 void stringleton_deinit (void);
 
-GObject *object_from_module (GType type, const gchar *module_name, const gchar *first_property_name, ...);
+GObject *object_from_module (GType type,
+                             const gchar *module_dir,
+                             const gchar *module_name,
+                             const gchar *first_property_name,
+                             ...);
 
 gchar *cache_path (cache_type_t type, const gchar *db_dir, const gchar *imagepath);
 
