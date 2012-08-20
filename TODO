@@ -1,5 +1,9 @@
 = AirPlay ======================================================================
 
+DACP client
+
+Support AirPlay, Pulseaudio, or ALSA
+
 DMAPD_AV_RENDER_MODULE=gst:host=192.168.1.XXX ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
 
 Check documentation of *_MODULE
@@ -11,6 +15,13 @@ Clean up FIXME's in av-render-gst.c
 Move GStreamer render module to libdmapsharing?
 
 = Short term ===================================================================
+
+Mike: dynamically adjust database when files are added to directories
+(inotify?). See "Kernel Korner - Intro to inotify"
+
+Mike: reconcile db with filesystem on dmapd start, store hash (include
+dmapd version) to determine if up to date?  Fix handling of bad blob data
+(DmapdD[AP]APRecord).
 
 Mike: split DB/cache directories; update packages?
 
@@ -33,19 +44,12 @@ Noah: investigate XCode integration
 
 Noah: iOS Wallet Photo App
 
-Mike: dynamically adjust database when files are added to directories
-(inotify?). See "Kernel Korner - Intro to inotify"
-
 Noah: support playlists using totem-pl-parser
 
 Mike: fix seeking (see libdmapsharing TODO)
 
 Mike: is dmapd-dmap-db.c really needed? Why can't a loadable module just
 implement an interface?
-
-Mike: reconcile db with filesystem on dmapd start, store hash (include
-dmapd version) to determine if up to date?  Fix handling of bad blob data
-(DmapdD[AP]APRecord).
 
 Mike: Migrate command line parsing to dmapd.xml.
 
