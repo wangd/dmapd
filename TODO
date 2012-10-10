@@ -19,6 +19,77 @@ Move GStreamer render module to libdmapsharing?
 Mike: dynamically adjust database when files are added to directories
 (inotify?). See "Kernel Korner - Intro to inotify"
 
+#include <gio/gio.h>
+#include <glib.h>
+#include <stdio.h>
+#include <string.h>
+
+void fn (GFileMonitor *monitor, GFile *file, GFile *other_file, GFileMonitorEvent event_type, gpointer user_data)
+{
+	printf ("CHANGED %s %d\n", g_file_get_basename (file), event_type);
+}
+
+void monitor_it (GFile *file)
+{
+	GError *error = NULL;
+	GFileMonitor *monitor = g_file_monitor_directory (file, 0, NULL, &error);
+	if (NULL == monitor) {
+		printf ("g_file_monitor_directory fail %s\n", error->message);
+		return;
+	}
+
+	printf ("monitor %s\n", g_file_get_basename (file));
+	g_signal_connect (monitor, "changed", (GCallback) fn, NULL);
+}
+
+int main (int argc, char *argv[])
+{
+	g_type_init ();
+
+	GFile *dir = g_file_new_for_uri ("file:///tmp/tmp");
+	if (NULL == dir) {
+		printf ("g_file_new_for_uri fail\n");
+		return 1;
+	}
+
+	monitor_it (dir);
+
+	GError *error = NULL;
+	GFileEnumerator *enumerator = g_file_enumerate_children (dir, "standard::*", 0, NULL, &error);
+	if (NULL == enumerator) {
+		printf ("g_file_enumerate_children fail %s\n", error->message);
+		return 1;
+	}
+
+	GFileInfo *info;
+	for (info = g_file_enumerator_next_file (enumerator, NULL, &error); info; info = g_file_enumerator_next_file (enumerator, NULL, &error)) {
+		printf ("%s\n", g_file_info_get_name (info));
+		GFileType type = g_file_info_get_file_type (info);
+		if (type == G_FILE_TYPE_DIRECTORY) {
+			printf ("DIRECTORY\n");
+		}
+		GFile *file = g_file_resolve_relative_path (dir,  g_file_info_get_name (info));
+		if (NULL == file) {
+			printf ("g_file_resolve_relative_path fail %s\n", error->message);
+			return 1;
+		}
+		monitor_it (file);
+		g_object_unref (file);
+	}
+
+	g_object_unref (dir);
+	g_file_enumerator_close (enumerator, NULL, &error);
+
+	GMainLoop *loop = g_main_loop_new (NULL, 0);
+	if (NULL == loop) {
+		printf ("g_main_loop_new fail\n");
+		return 1;
+	}
+	g_main_loop_run (loop);
+
+	printf ("DONE\n");
+}
+
 Mike: reconcile db with filesystem on dmapd start, store hash (include
 dmapd version) to determine if up to date?  Fix handling of bad blob data
 (DmapdD[AP]APRecord).
