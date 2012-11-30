@@ -178,7 +178,7 @@ AC_SUBST(VIPS_CFLAGS)
 AC_SUBST(VIPS_LIBS)
 
 dnl Check for GStreamer, needed for DAAP metadata reading
-PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10, HAVE_GSTREAMER=yes,
+PKG_CHECK_MODULES(GSTREAMER, gstreamer-1.0, HAVE_GSTREAMER=yes,
   HAVE_GSTREAMER=no)
 
 if test x"$HAVE_GSTREAMER" = "xyes"; then

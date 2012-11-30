@@ -253,7 +253,7 @@ pad_added_cb (GstElement *decodebin, GstPad *pad,
 	const gchar *mimetype;
 	GstStructure *structure;
 
-	caps = gst_pad_get_caps (pad);
+	caps = gst_pad_query_caps (pad, NULL);
 	if (gst_caps_is_empty (caps) || gst_caps_is_any (caps)) {
 		g_warning ("Error getting caps from pad");
 		goto _return;
@@ -372,7 +372,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	g_main_loop_run (gst_reader->priv->loop);
 
 	if (! gst_element_query_duration (gst_reader->priv->sink,
-					 &fmt,
+					  fmt,
 					 &nanoduration)) {
 		g_warning ("Could not determine duration of %s", uri);
 	} else {

@@ -175,7 +175,7 @@ pad_added_cb (GstElement *decodebin, GstPad *pad,
         const gchar *mimetype;
         GstStructure *structure;
 
-        caps = gst_pad_get_caps (pad);
+        caps = gst_pad_query_caps (pad, NULL);
         if (gst_caps_is_empty (caps) || gst_caps_is_any (caps)) {
                 g_warning ("Error getting caps from pad");
                 goto _return;
