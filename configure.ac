@@ -37,19 +37,19 @@ MODULE_LIBTOOL_FLAGS="-module -avoid-version"
 AC_SUBST(MODULE_LIBTOOL_FLAGS)
 
 AC_ARG_ENABLE(daap, [  --disable-daap          do not build DAAP support], daap=$enableval, daap=yes)
-if test x$daap == xyes; then
+if test x$daap = xyes; then
 	AC_DEFINE(WITH_DAAP,1,[Defined when DAAP support is to be built])
 	AM_CONDITIONAL(WITH_DAAP, true)
 fi
 
 AC_ARG_ENABLE(dpap, [  --disable-dpap          do not build DPAP support], dpap=$enableval, dpap=yes)
-if test x$dpap == xyes; then
+if test x$dpap = xyes; then
 	AC_DEFINE(WITH_DPAP,1,[Defined when DPAP support is to be built])
 	AM_CONDITIONAL(WITH_DPAP, true)
 fi
 
 AC_ARG_ENABLE(dacp, [  --disable-dacp          do not build DACP support], dacp=$enableval, dacp=yes)
-if test x$dacp == xyes; then
+if test x$dacp = xyes; then
 	AC_DEFINE(WITH_DACP,1,[Defined when DACP support is to be built])
 	AM_CONDITIONAL(WITH_DACP, true)
 fi
