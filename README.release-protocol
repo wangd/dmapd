@@ -34,7 +34,7 @@
 
 	d. git tag -s DMAPD_X_Y_Z -m "Tag for X.Y.Z release."
 
-	e. git push
+	e. git push / git push --tags
 
 	f. Publish tarball (./autogen.sh --enable-gtk-doc --disable-maintainer-mode && make dist)
 
