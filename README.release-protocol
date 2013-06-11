@@ -32,7 +32,7 @@
 
 	c. git commit -a -s -m "Bump version number"
 
-	d. git tag -s DMAPD_X_Y_Z -m "Tag for X.Y.Z release."
+	d. git tag -s DMAPD_X_Y_Z -m "Tag for X.Y.Z release"
 
 	e. git push / git push --tags
 
