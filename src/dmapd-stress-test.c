@@ -203,7 +203,6 @@ int main(int argc, char **argv)
 	GError *error = NULL;
 
 	g_type_init ();
-	g_thread_init (NULL);
 	stringleton_init ();
 
 	g_log_set_handler ("libdmapsharing", G_LOG_LEVEL_DEBUG, debug_null, NULL);
