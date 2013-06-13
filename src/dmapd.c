@@ -47,6 +47,7 @@
 #include "av-render.h"
 #include "photo-meta-reader.h"
 #include "util.h"
+#include "util-gst.h"
 
 #define DEFAULT_CONFIG_FILE            DEFAULT_SYSCONFDIR "/dmapd.conf"
 #define DEFAULT_DB_MOD                "ghashtable"
@@ -271,127 +272,6 @@ debug_null (const char *log_domain,
 	    const gchar *message,
 	    gpointer user_data)
 {
-}
-
-static void
-do_transcode (DAAPRecord *record, gchar *cachepath)
-{
-	GError *error = NULL;
-	GInputStream *stream, *decoded_stream;
-	
-	stream = daap_record_read (record, &error);
-	if (! stream) {
-		gchar *location = NULL;
-		g_object_get (record, "location", &location, NULL);
-		g_warning ("Error opening %s: %s", location, error->message);
-		g_error_free (error);
-		goto _return_no_close;
-	}
-	/* FIXME: make target format flexible: */
-	decoded_stream = dmap_gst_input_stream_new ("audio/mp3", stream);
-	if (! decoded_stream) {
-		gchar *location;
-		g_object_get (record, "location", &location, NULL);
-		g_warning ("Error opening %s", location);
-		g_error_free (error);
-		goto _return_no_close_decoded_stream;
-	}
-	gssize read_size;
-	gchar buf[BUFSIZ];
-
-	FILE *outfile = fopen (cachepath, "w");
-	if (outfile == NULL) {
-		 g_warning ("Error opening: %s", cachepath);
-		 goto _return_no_close_outfile;
-	}
-
-	/* FIXME: is there a glib function to do this? */
-	do {
-		read_size = g_input_stream_read (decoded_stream,
-						 buf,
-						 BUFSIZ,
-						 NULL,
-						&error);
-		if (read_size > 0) {
-			if (fwrite (buf, 1, read_size, outfile) != read_size) {
-				 g_warning ("Error writing transcoded data");
-				 goto _return;
-			}
-		} else if (error != NULL) {
-			g_warning ("Error transcoding: %s", error->message);
-			g_error_free (error);
-			goto _return;
-		}
-	} while (read_size > 0);
-
-_return:
-	fclose (outfile);
-_return_no_close_outfile:
-	g_input_stream_close (decoded_stream, NULL, NULL);
-_return_no_close_decoded_stream:
-	g_input_stream_close (stream, NULL, NULL); /* FIXME: should this be done in GGstMp3InputStream class? */
-_return_no_close:
-	return;
-}
-
-/* NOTE: This is here and not in the individual DMAPRecords because records
- * have no knowlege of the database, db_dir, etc.
- */
-static void
-transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
-{
-	gboolean has_video = FALSE;
-	gchar *location = NULL;
-	gchar *format = NULL;
-	gchar *cacheuri = NULL;
-	gchar *cachepath = NULL;
-
-	g_object_get (record,
-		     "location",
-		     &location,
-		      "format",
-		     &format,
-		     "has-video",
-		     &has_video,
-		      NULL);
-
-	if (! (location && format)) {
-		g_warning ("Error reading record properties for transcoding");
-		return;
-	}
-
-	/* FIXME: make target format flexible: */
-	if (! strcmp (format, "mp3")) {
-		g_debug ("Transcoding not necessary %s", location);
-		return;
-	}
-
-	if (has_video) {
-		g_debug ("Not transcoding video %s", location);
-		return;
-	}
-
-	g_assert (db_dir);
-	cachepath = cache_path (CACHE_TYPE_TRANSCODED_DATA, db_dir, location);
-
-	if (! g_file_test (cachepath, G_FILE_TEST_EXISTS)) {
-		/* FIXME: return value, not void: */
-		g_debug ("Transcoding %s to %s", location, cachepath);
-		do_transcode (record, cachepath);
-	} else {
-		g_debug ("Found transcoded data at %s for %s", cachepath, location);
-	}
-
-	/* Replace previous location with URI to transcoded file. */
-	cacheuri = g_filename_to_uri(cachepath, NULL, NULL);
-	g_object_set (record, "location", cacheuri, NULL);
-	g_free (cacheuri);
-	/* FIXME: make target format flexible: */
-	g_object_set (record, "format", "mp3", NULL);
-
-	g_free (cachepath);
-
-	return;
 }
 
 static DMAPShare *

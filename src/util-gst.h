@@ -26,8 +26,11 @@
 #include <glib.h>
 #include <gst/gst.h>
 
+#include "dmapd-daap-record.h"
+
 // FIXME: split into two different impl.: GstElement *setup_pipeline (const char *sinkname);
 gboolean pads_compatible (GstPad *pad1, GstPad *pad2);
 gboolean transition_pipeline (GstElement *pipeline, GstState state);
+void     transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir);
 
 #endif
