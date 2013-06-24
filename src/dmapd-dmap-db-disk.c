@@ -185,11 +185,11 @@ cache_store (const gchar *db_dir, const gchar *location, GByteArray *blob)
         GError *error = NULL;
         /* NOTE: g_stat seemed broken; would corrupt GError *error. */
         if (stat (db_dir, &st) != 0) {
-                g_warning ("cache directory %s does not exist, will not cache", db_dir);
+                g_warning ("Cache directory %s does not exist, will not cache.", db_dir);
                 return;
         }
         if (! (st.st_mode & S_IFDIR)) {
-                g_warning ("%s is not a directory, will not cache", db_dir);
+                g_warning ("Node %s is not a directory, will not cache.", db_dir);
                 return;
         }
         cachepath = cache_path (CACHE_TYPE_RECORD, db_dir, location);
@@ -198,7 +198,7 @@ cache_store (const gchar *db_dir, const gchar *location, GByteArray *blob)
 			     blob->len,
 			     &error);
         if (error != NULL) {
-                g_warning ("Error writing %s", cachepath);
+                g_warning ("Error writing %s: %s.", cachepath, error->message);
         }
 
         g_free (cachepath);

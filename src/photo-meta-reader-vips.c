@@ -64,7 +64,7 @@ calculate_shrink (PhotoMetaReader * reader, int width, int height,
 		max_thumbnail_width = DEFAULT_MAX_THUMBNAIL_WIDTH;
 	}
 
-	g_debug ("Max thumbnail width is %d", max_thumbnail_width);
+	g_debug ("    Maximum thumbnail width is %d.", max_thumbnail_width);
 
 	/* We shrink to make the largest dimension equal to size. */
 	int dimension = VIPS_MAX (width, height);
@@ -146,21 +146,21 @@ thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 	 */
 	switch (x->Coding) {
 		case IM_CODING_LABQ:
-			g_debug ("in im_LabQ2disp");
+			g_debug ("    In im_LabQ2disp.");
 			if (im_LabQ2disp (x, t[0], im_col_displays (7))) {
 				g_warning ("Failed");
 				return FALSE;
 			}
-			g_debug ("Done");
+			g_debug ("    Done.");
 			x = t[0];
 			break;
 		case IM_CODING_RAD:
-			g_debug ("in im_rad2float");
+			g_debug ("    In im_rad2float.");
 			if (im_rad2float (x, t[0])) {
 				g_warning ("Failed");
 				return FALSE;
 			}
-			g_debug ("Done");
+			g_debug ("    Done.");
 			x = t[0];
 			break;
 		case IM_CODING_NONE:
@@ -170,23 +170,23 @@ thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 			return FALSE;
 	}
 
-	g_debug ("Shrinking");
+	g_debug ("    Shrinking.");
 	if (im_shrink (x, t[1], shrink, shrink) ||
 	    im_affinei_all (t[1], t[2], interp, residual, 0, 0, residual, 0, 0)) {
 		g_warning ("Failed");
 		return FALSE;
 	}
-	g_debug ("Shrinking done");
+	g_debug ("    Shrinking done.");
 	x = t[2];
 
 	/* If we are upsampling, don't sharpen, since nearest looks dumb sharpened. */
 	if (residual > 1.0) {
-		g_debug ("Sharpening");
+		g_debug ("    Sharpening.");
 		if (im_conv (x, t[3], sharpen_filter ())) {
 			g_warning ("Failed");
 			return FALSE;
 		}
-		g_debug ("Sharpening done");
+		g_debug ("    Sharpening done.");
 		x = t[3];
 	}
 
@@ -225,7 +225,7 @@ thumbnail2 (PhotoMetaReader * reader, VipsImage * in, VipsFormatClass * format,
 		g_warning ("Error reading generated thumbnail at %s",
 			   thumbpath);
 	} else {
-		g_debug ("Generated thumbnail");
+		g_debug ("    Generated thumbnail.");
 		got_thumb = TRUE;
 	}
 
@@ -264,7 +264,7 @@ thumbnail (PhotoMetaReader * reader, VipsImage * in, VipsFormatClass * format,
 				goto _done;
 			}
 
-			g_debug ("Read EXIF thumbnail of size %lu", *size);
+			g_debug ("    Read EXIF thumbnail of size %lu.", *size);
 
 			// Process EXIF thumbnail instead (may need to shrink more).
 			// This is expected to be small; open in memory.
@@ -326,7 +326,7 @@ photo_meta_reader_vips_read (PhotoMetaReader * reader,
 	void *thumbnail_data = NULL;
 	gsize thumbnail_size = 0;
 
-	g_debug ("Processing %s", path);
+	g_debug ("Processing %s...", path);
 
 	format = vips_format_for_file (path);
 	if (NULL == format) {
@@ -412,7 +412,7 @@ photo_meta_reader_vips_read (PhotoMetaReader * reader,
 	g_object_set (record, "rating", 5, NULL);
 
 	if (thumbnail (reader, im, format, &thumbnail_data, &thumbnail_size)) {
-		g_debug ("Thumbnail is %ld bytes", thumbnail_size);
+		g_debug ("    Thumbnail is %ld bytes", thumbnail_size);
 		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
 		g_byte_array_append (thumbnail_array, thumbnail_data,
 				     thumbnail_size);

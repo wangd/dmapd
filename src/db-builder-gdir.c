@@ -21,7 +21,7 @@
 #include "db-builder.h"
 #include "db-builder-gdir.h"
 
-#include <glib.h>
+#include <libdmapsharing/dmap.h>
 
 /*
 struct DbBuilderGDirPrivate {
@@ -94,8 +94,9 @@ db_builder_gdir_build_db_starting_at (DbBuilder *builder,
 
 				if (! id) {
 					id = add_file_to_db (path, db);
+					g_debug ("Done processing %s with id. %u (record #%u).", path, id, dmap_db_count (db));
 				} else {
-					g_debug ("Loaded cached %s", path);
+					g_debug ("Done processing (cached) %s with id. %u (record #%u).", path, id, dmap_db_count (db));
 				}
 
 				if (id) {

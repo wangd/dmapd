@@ -184,7 +184,7 @@ pad_added_cb (GstElement *decodebin, GstPad *pad,
         structure = gst_caps_get_structure (caps, 0);
         mimetype = gst_structure_get_name (structure);
 
-        g_debug ("Pad mimetype is %s", mimetype);
+        g_debug ("    Added pad with mimetype %s.", mimetype);
 
         if (g_strrstr (mimetype, "video")) {
                 g_debug("Has video component");
@@ -267,7 +267,7 @@ setup_pipeline (const char *sinkname)
 		goto _error;
 	}
 
-	g_debug ("Pipeline complete");
+	g_debug ("    Created a pipeline.");
 	return pipeline;
 
 _error:

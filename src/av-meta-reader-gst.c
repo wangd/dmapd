@@ -138,7 +138,7 @@ determine_format (DAAPRecord *record, const gchar *description)
 		format = ext;
 	}
 
-	g_debug ("Format is %s", format);
+	g_debug ("    Format is %s.", format);
 	return format;
 }
 
@@ -160,7 +160,7 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 			val = g_strdup_value_contents (gst_tag_list_get_value_index (list, tag, i));
 		}
 
-		g_debug ("%s is %s", tag, val);
+		g_debug ("    Tag %s is %s.", tag, val);
 		if (! strcmp ("title", tag)) {
 			g_object_set (record, "title", val, NULL);
 		} else if (! strcmp ("artist", tag)) {
@@ -194,7 +194,7 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 		} else if (! strcmp ("audio-codec", tag)) {
 			gboolean has_video;
 			g_object_get (record, "has-video", &has_video, NULL);
-			g_debug ("%s video", has_video ? "Has" : "Does not have");
+			g_debug ("    %s video.", has_video ? "Has" : "Does not have");
 			if (has_video) {
 				g_object_set (record, "mediakind", DMAP_MEDIA_KIND_MOVIE, NULL);
 				/* FIXME: get from video stream. */
@@ -215,7 +215,7 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 		} else if (! strcmp ("track-number", tag)) {
 			g_object_set (record, "track", atoi (val), NULL);
 		} else {
-			g_debug ("Unused metadata");
+			g_debug ("    Unused metadata %s.", tag);
 		}
 		g_free (val);
 	}
@@ -262,7 +262,7 @@ pad_added_cb (GstElement *decodebin, GstPad *pad,
 	structure = gst_caps_get_structure (caps, 0);
 	mimetype = gst_structure_get_name (structure);
 
-	g_debug ("Pad mimetype is %s", mimetype);
+	g_debug ("    Added pad with mimetype %s.", mimetype);
 
 	if (g_strrstr (mimetype, "video")) {
 		g_debug("Has video component");
@@ -313,7 +313,7 @@ setup_pipeline (const char *sinkname)
 			  sink,
 			  NULL);
 
-	g_debug ("Pipeline complete");
+	g_debug ("    Created a pipeline.");
 	return pipeline;
 
 _error:
@@ -336,7 +336,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 
 	g_mutex_lock (gst_reader->priv->tag_read);
 
-	g_debug("Looking at %s", uri);
+	g_debug("Processing %s...", uri);
 
 	if (! (gst_reader->priv->pipeline = setup_pipeline ("fakesink")))
 		goto _return;
@@ -374,7 +374,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	if (! gst_element_query_duration (gst_reader->priv->sink,
 					  fmt,
 					 &nanoduration)) {
-		g_warning ("Could not determine duration of %s", uri);
+		g_warning ("Could not determine duration of %s.", uri);
 	} else {
 		g_assert (fmt == GST_FORMAT_TIME);
 		/* NOTE: cast avoids segfault on MIPS32: */

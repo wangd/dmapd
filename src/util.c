@@ -137,7 +137,7 @@ const gchar *stringleton_ref (const gchar *str)
 		                     val + 1);
 	}
 
-	g_debug ("stringleton ref %s to %u", str, GPOINTER_TO_UINT (val));
+	g_debug ("        Increment stringleton %s reference count to %u.", str, GPOINTER_TO_UINT (val));
 
 	return str;
 }
@@ -152,7 +152,7 @@ void stringleton_unref (const gchar *str)
 		count = GPOINTER_TO_UINT (g_hash_table_lookup (stringleton,
 							      (gpointer) str));
 
-		g_debug ("stringleton unref %s to %u", str, count - 1);
+		g_debug ("        Decrement stringleton %s reference count to %u.", str, count - 1);
 
 		/* NOTE: insert will free passed str if the key already exists,
 		 * not existing key in hash table.
@@ -211,7 +211,7 @@ object_from_module (GType type, const gchar *module_dir, const gchar *module_nam
 
 	/* dmapd-dmap-db-ghashtable is built in because it is used by DmapdDMAPContainerRecord: */
 	if (! strcmp (module_name, "ghashtable")) {
-		g_debug ("Not loading built in DmapdDMAPDbGHashTable %s", g_type_name (TYPE_DMAPD_DMAP_DB_GHASHTABLE));
+		g_debug ("Not loading built in %s.", g_type_name (TYPE_DMAPD_DMAP_DB_GHASHTABLE));
 		child_type = TYPE_DMAPD_DMAP_DB_GHASHTABLE;
 		fnval = g_object_new_valist (child_type, first_property_name, ap);
 	} else {
