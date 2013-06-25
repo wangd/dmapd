@@ -68,7 +68,7 @@ transition_pipeline (GstElement *pipeline, GstState state)
 }
 
 static void
-do_transcode (DAAPRecord *record, gchar *cachepath)
+do_transcode (DAAPRecord *record, gchar *cachepath, gchar* target_mimetype)
 {
 	GError *error = NULL;
 	GInputStream *stream, *decoded_stream;
@@ -81,8 +81,7 @@ do_transcode (DAAPRecord *record, gchar *cachepath)
 		g_error_free (error);
 		goto _return_no_close;
 	}
-	/* FIXME: make target format flexible: */
-	decoded_stream = dmap_gst_input_stream_new ("audio/mp3", stream);
+	decoded_stream = dmap_gst_input_stream_new (target_mimetype, stream);
 	if (! decoded_stream) {
 		gchar *location;
 		g_object_get (record, "location", &location, NULL);
@@ -132,7 +131,7 @@ _return_no_close:
  * have no knowledge of the database, db_dir, etc.
  */
 void
-transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
+transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mimetype_t *df)
 {
 	gboolean has_video = FALSE;
 	gchar *location = NULL;
@@ -154,24 +153,20 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 		return;
 	}
 
-	/* FIXME: make target format flexible: */
-	if (! strcmp (format, "mp3")) {
+	gchar *format2 = dmap_mime_to_format (df->target_transcode_mimetype);
+
+	if (! strcmp (format, format2)) {
 		g_debug ("Transcoding not necessary %s", location);
 		return;
 	}
 
-	if (has_video) {
-		g_debug ("Not transcoding video %s", location);
-		return;
-	}
-
-	g_assert (db_dir);
-	cachepath = cache_path (CACHE_TYPE_TRANSCODED_DATA, db_dir, location);
+	g_assert (df->db_dir);
+	cachepath = cache_path (CACHE_TYPE_TRANSCODED_DATA, df->db_dir, location);
 
 	if (! g_file_test (cachepath, G_FILE_TEST_EXISTS)) {
 		/* FIXME: return value, not void: */
 		g_debug ("Transcoding %s to %s", location, cachepath);
-		do_transcode (record, cachepath);
+		do_transcode (record, cachepath, df->target_transcode_mimetype);
 	} else {
 		g_debug ("Found transcoded data at %s for %s", cachepath, location);
 	}
@@ -180,10 +175,10 @@ transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
 	cacheuri = g_filename_to_uri(cachepath, NULL, NULL);
 	g_object_set (record, "location", cacheuri, NULL);
 	g_free (cacheuri);
-	/* FIXME: make target format flexible: */
-	g_object_set (record, "format", "mp3", NULL);
+	g_object_set (record, "format", format2, NULL);
 
 	g_free (cachepath);
+	g_free (format2);
 
 	return;
 }

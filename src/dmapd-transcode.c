@@ -115,7 +115,7 @@ transcode (DMAPRecordFactory *factory,
 		db_builder_build_db_starting_at (builder, l->data, db, NULL, NULL);
 	}
 
-	dmap_db_foreach (db, (GHFunc) transcode_cache, output_dir);
+	dmap_db_foreach (db, (GHFunc) transcode_cache, &(db_dir_and_target_transcode_mimetype_t) { output_dir, transcode_mimetype });
 
 	if (NULL != db) {
 		g_object_unref (db);

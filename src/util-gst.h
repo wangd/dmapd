@@ -28,9 +28,14 @@
 
 #include "dmapd-daap-record.h"
 
+typedef struct {
+	gchar *db_dir;
+	gchar *target_transcode_mimetype;
+} db_dir_and_target_transcode_mimetype_t;
+
 // FIXME: split into two different impl.: GstElement *setup_pipeline (const char *sinkname);
 gboolean pads_compatible (GstPad *pad1, GstPad *pad2);
 gboolean transition_pipeline (GstElement *pipeline, GstState state);
-void     transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir);
+void     transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mimetype_t* df);
 
 #endif

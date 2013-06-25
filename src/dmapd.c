@@ -315,7 +315,7 @@ serve (protocol_id_t protocol,
 	}
 
 	if (protocol == DAAP && transcode_mimetype && ! enable_rt_transcode)
-		dmap_db_foreach (db, (GHFunc) transcode_cache, db_protocol_dir);
+		dmap_db_foreach (db, (GHFunc) transcode_cache, &(db_dir_and_target_transcode_mimetype_t) { db_dir, transcode_mimetype });
 
 	loop = g_main_loop_new (NULL, FALSE);
 	share = create_share (protocol, DMAP_DB (db), DMAP_CONTAINER_DB (container_db));

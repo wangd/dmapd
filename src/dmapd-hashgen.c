@@ -29,15 +29,38 @@
 int main (int argc, char *argv[])
 {
 	guchar hash[33] = { 0 };
+	gchar *absolute_path = NULL;
 
 	if (argc != 2) {
 		fprintf (stderr, "usage: %s path\n", argv[0]);
 		exit (EXIT_FAILURE);
 	}
 
-	gchar *uri = g_filename_to_uri (argv[1], NULL, NULL);
+	if (! g_path_is_absolute (argv[1])) {
+		gchar *dir = g_get_current_dir ();
+		if (NULL == dir) {
+			g_error ("Could not determine current directory\n");
+		}
+
+		absolute_path = g_build_filename (dir, argv[1], NULL);
+	} else {
+		absolute_path = g_strdup (argv[1]);
+	}
+
+	if (NULL == absolute_path) {
+		g_error ("Could not build absolute path\n");
+	}
+
+	gchar *uri = g_filename_to_uri (absolute_path, NULL, NULL);
+	if (NULL == uri) {
+		g_error ("Could not convert %s to a URI", argv[1]);
+	}
+
 	gchar *escaped_filename = strrchr (uri, '/') + 1;
+
 	dmap_hash_generate (1, (const guchar*) escaped_filename, 2, hash, 0);	
 	printf ("%s\n", hash);
+
 	g_free (uri);
+	g_free (absolute_path);
 }
