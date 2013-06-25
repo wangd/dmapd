@@ -17,10 +17,12 @@ AM_CFLAGS = \
 	-DDEFAULT_RUNDIR=\"$(RUNDIR)\" \
 	-DDEFAULT_SYSCONFDIR=\"$(SYSCONFDIR)\"
 
-sbin_PROGRAMS   = dmapd
+sbin_PROGRAMS = dmapd
 
 if USE_GSTREAMER
-bin_PROGRAMS    = dmapd-transcode
+bin_PROGRAMS = \
+	dmapd-transcode \
+	dmapd-hashgen
 endif
 
 noinst_PROGRAMS = dmapd-stress-test
@@ -38,6 +40,11 @@ dmapd_transcode_SOURCES = \
 	dmapd-transcode.c
 
 dmapd_transcode_LDADD = libdmapd.la
+
+dmapd_hashgen_SOURCES = \
+	dmapd-hashgen.c
+
+dmapd_hashgen_LDADD = libdmapd.la
 
 dmapd_stress_test_SOURCES = \
 	dmapd-stress-test.c

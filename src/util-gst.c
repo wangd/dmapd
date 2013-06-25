@@ -129,7 +129,7 @@ _return_no_close:
 }
 
 /* NOTE: This is here and not in the individual DMAPRecords because records
- * have no knowlege of the database, db_dir, etc.
+ * have no knowledge of the database, db_dir, etc.
  */
 void
 transcode_cache (gpointer id, DAAPRecord *record, gchar *db_dir)
