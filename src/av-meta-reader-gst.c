@@ -210,7 +210,9 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 				g_object_set (record, "format", ext, NULL);
 			} else {
 				g_object_set (record, "mediakind", DMAP_MEDIA_KIND_MUSIC, NULL);
-				g_object_set (record, "format", determine_format (record, val), NULL);
+				gchar *format = determine_format (record, val);
+				g_assert (format);
+				g_object_set (record, "format", format, NULL);
 			}
 		} else if (! strcmp ("track-number", tag)) {
 			g_object_set (record, "track", atoi (val), NULL);

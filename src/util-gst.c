@@ -20,6 +20,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <libdmapsharing/dmap.h>
 #include <stdio.h>
 
 #include "util.h"
@@ -70,6 +71,8 @@ transition_pipeline (GstElement *pipeline, GstState state)
 static void
 do_transcode (DAAPRecord *record, gchar *cachepath, gchar* target_mimetype)
 {
+	gssize read_size;
+	gchar buf[BUFSIZ];
 	GError *error = NULL;
 	GInputStream *stream, *decoded_stream;
 	
@@ -77,25 +80,27 @@ do_transcode (DAAPRecord *record, gchar *cachepath, gchar* target_mimetype)
 	if (! stream) {
 		gchar *location = NULL;
 		g_object_get (record, "location", &location, NULL);
+		g_assert (NULL != location);
 		g_warning ("Error opening %s: %s", location, error->message);
 		g_error_free (error);
-		goto _return_no_close;
+		g_free (location);
+		goto _return;
 	}
 	decoded_stream = dmap_gst_input_stream_new (target_mimetype, stream);
-	if (! decoded_stream) {
+	if (NULL == decoded_stream) {
 		gchar *location;
 		g_object_get (record, "location", &location, NULL);
+		g_assert (NULL != location);
 		g_warning ("Error opening %s", location);
 		g_error_free (error);
-		goto _return_no_close_decoded_stream;
+		g_free (location);
+		goto _return;
 	}
-	gssize read_size;
-	gchar buf[BUFSIZ];
 
 	FILE *outfile = fopen (cachepath, "w");
 	if (outfile == NULL) {
 		 g_warning ("Error opening: %s", cachepath);
-		 goto _return_no_close_outfile;
+		 goto _return;
 	}
 
 	/* FIXME: is there a glib function to do this? */
@@ -118,12 +123,18 @@ do_transcode (DAAPRecord *record, gchar *cachepath, gchar* target_mimetype)
 	} while (read_size > 0);
 
 _return:
-	fclose (outfile);
-_return_no_close_outfile:
-	g_input_stream_close (decoded_stream, NULL, NULL);
-_return_no_close_decoded_stream:
-	g_input_stream_close (stream, NULL, NULL); /* FIXME: should this be done in GGstMp3InputStream class? */
-_return_no_close:
+	if (NULL != outfile) {
+		fclose (outfile);
+	}
+
+	if (NULL != decoded_stream) {
+		g_input_stream_close (decoded_stream, NULL, NULL);
+	}
+
+	if (NULL != stream) {
+		g_input_stream_close (stream, NULL, NULL); /* FIXME: should this be done in GGstMp3InputStream class? */
+	}
+
 	return;
 }
 
@@ -139,6 +150,9 @@ transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mi
 	gchar *cacheuri = NULL;
 	gchar *cachepath = NULL;
 
+	g_assert (df->db_dir);
+	g_assert (df->target_transcode_mimetype);
+
 	g_object_get (record,
 		     "location",
 		     &location,
@@ -150,18 +164,25 @@ transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mi
 
 	if (! (location && format)) {
 		g_warning ("Error reading record properties for transcoding");
-		return;
+		goto _return;
 	}
 
 	gchar *format2 = dmap_mime_to_format (df->target_transcode_mimetype);
+	if (NULL == format2) {
+		g_debug ("Cannot transcode %s\n", df->target_transcode_mimetype);
+		goto _return;
+	}
 
 	if (! strcmp (format, format2)) {
 		g_debug ("Transcoding not necessary %s", location);
-		return;
+		goto _return;
 	}
 
-	g_assert (df->db_dir);
 	cachepath = cache_path (CACHE_TYPE_TRANSCODED_DATA, df->db_dir, location);
+	if (NULL == cachepath) {
+		g_debug ("Could not determine cache path");
+		goto _return;
+	}
 
 	if (! g_file_test (cachepath, G_FILE_TEST_EXISTS)) {
 		/* FIXME: return value, not void: */
@@ -173,12 +194,30 @@ transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mi
 
 	/* Replace previous location with URI to transcoded file. */
 	cacheuri = g_filename_to_uri(cachepath, NULL, NULL);
+	if (NULL == cacheuri) {
+		g_debug ("Could convert %s to URI\n", cachepath);
+		goto _return;
+	}
+
 	g_object_set (record, "location", cacheuri, NULL);
-	g_free (cacheuri);
 	g_object_set (record, "format", format2, NULL);
 
-	g_free (cachepath);
-	g_free (format2);
+_return:
+	if (location) {
+		g_free (location);
+	}
+	if (format) {
+		g_free (format);
+	}
+	if (cacheuri) {
+		g_free (cacheuri);
+	}
+	if (cachepath) {
+		g_free (cachepath);
+	}
+	if (format2) {
+		g_free (format2);
+	}
 
 	return;
 }
