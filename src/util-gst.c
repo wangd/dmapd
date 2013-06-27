@@ -62,7 +62,7 @@ transition_pipeline (GstElement *pipeline, GstState state)
 			fnval = FALSE;
 		}
 	} else if (sret != GST_STATE_CHANGE_SUCCESS) {
-		g_warning ("Could not read file");
+		g_warning ("Could not read file.");
 		fnval = FALSE;
 	}
 	return fnval;
@@ -144,11 +144,13 @@ _return:
 void
 transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mimetype_t *df)
 {
+	struct stat statbuf;
 	gboolean has_video = FALSE;
 	gchar *location = NULL;
 	gchar *format = NULL;
 	gchar *cacheuri = NULL;
 	gchar *cachepath = NULL;
+	guint64 filesize;
 
 	g_assert (df->db_dir);
 	g_assert (df->target_transcode_mimetype);
@@ -169,7 +171,7 @@ transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mi
 
 	gchar *format2 = dmap_mime_to_format (df->target_transcode_mimetype);
 	if (NULL == format2) {
-		g_debug ("Cannot transcode %s\n", df->target_transcode_mimetype);
+		g_warning ("Cannot transcode %s\n", df->target_transcode_mimetype);
 		goto _return;
 	}
 
@@ -180,7 +182,7 @@ transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mi
 
 	cachepath = cache_path (CACHE_TYPE_TRANSCODED_DATA, df->db_dir, location);
 	if (NULL == cachepath) {
-		g_debug ("Could not determine cache path");
+		g_warning ("Could not determine cache path.");
 		goto _return;
 	}
 
@@ -192,15 +194,23 @@ transcode_cache (gpointer id, DAAPRecord *record, db_dir_and_target_transcode_mi
 		g_debug ("Found transcoded data at %s for %s", cachepath, location);
 	}
 
+	if (-1 == stat (cachepath, &statbuf)) {
+		g_warning ("Could not determine size of transcoded file.");
+		goto _return;
+	}
+	filesize = statbuf.st_size;
+
 	/* Replace previous location with URI to transcoded file. */
 	cacheuri = g_filename_to_uri(cachepath, NULL, NULL);
 	if (NULL == cacheuri) {
-		g_debug ("Could convert %s to URI\n", cachepath);
+		g_warning ("Could not convert %s to URI.\n", cachepath);
 		goto _return;
 	}
 
-	g_object_set (record, "location", cacheuri, NULL);
-	g_object_set (record, "format", format2, NULL);
+	g_object_set (record, "location", cacheuri,
+	                      "format",   format2,
+	                      "filesize", filesize,
+	                       NULL);
 
 _return:
 	if (location) {
