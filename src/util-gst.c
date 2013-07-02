@@ -21,7 +21,10 @@
  */
 
 #include <libdmapsharing/dmap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "util.h"
 #include "util-gst.h"
