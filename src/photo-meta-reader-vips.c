@@ -95,31 +95,6 @@ calculate_shrink (PhotoMetaReader * reader, int width, int height, double *resid
 	return shrink;
 }
 
-/* We use bilinear interpolation for the final shrink. VIPS has higher-order
- * interpolators, but they are only built if a C++ compiler is available.
- * Bilinear can look a little 'soft', so after shrinking, we need to sharpen a
- * little.
- *
- * This is a simple sharpen filter.
- */
-static INTMASK *
-sharpen_filter (void)
-{
-	static INTMASK *mask = NULL;
-
-	if (NULL == mask) {
-		mask = im_create_imaskv ("sharpen.con", 3, 3, -1, -1, -1, -1, 16, -1, -1, -1, -1);
-
-		if (NULL == mask) {
-			g_error ("Could not create VIPS mask");
-		}
-
-		mask->scale = 8;
-	}
-
-	return (mask);
-}
-
 static gboolean
 thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 {
@@ -128,7 +103,7 @@ thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 	g_assert (NULL != out);
 
 	gboolean fnval = FALSE; 
-	VipsImage *t[4] = { NULL, NULL, NULL, NULL };
+	VipsImage *t[3] = { NULL, NULL, NULL };
 	VipsImage *x = NULL;
 	VipsInterpolate *interp = NULL;
 	int shrink;
@@ -150,16 +125,13 @@ thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 		goto _done;
 	}
 
-	if (im_open_local_array (out, t, 4, "thumbnail", "p")) {
-		g_warning ("Could not open local array");
-		goto _done;
-	}
 	x = in;
+
 	/* Unpack the two coded formats we support to float for processing.  */
 	switch (x->Coding) {
 		case IM_CODING_LABQ:
-			g_debug ("    In im_LabQ2disp.");
-			if (im_LabQ2disp (x, t[0], im_col_displays (7))) {
+			g_debug ("    Coding LABQ.");
+			if (vips_LabQ2sRGB (x, &t[0], NULL)) {
 				g_warning ("    Failed.");
 				goto _done;
 			}
@@ -167,8 +139,8 @@ thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 			x = t[0];
 			break;
 		case IM_CODING_RAD:
-			g_debug ("    In im_rad2float.");
-			if (im_rad2float (x, t[0])) {
+			g_debug ("    Coding RAD.");
+			if (vips_rad2float (x, &t[0], NULL)) {
 				g_warning ("    Failed.");
 				goto _done;
 			}
@@ -183,24 +155,18 @@ thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 			goto _done;
 	}
 
-	g_debug ("    Shrinking.");
-	if (vips_shrink (x, &t[1], shrink, shrink, NULL) ||
-	    vips_affine (t[1], &t[2], residual, 0, 0, residual, "interpolate", interp)) {
-		g_warning ("Failed");
-		goto _done;
-	}
-	g_debug ("    Shrinking done.");
-	x = t[2];
-
-	/* If we are upsampling, don't sharpen, since nearest looks dumb sharpened. */
-	if (residual > 1.0) {
-		g_debug ("    Sharpening.");
-		if (im_conv (x, t[3], sharpen_filter ())) {
-			g_warning ("Failed");
+	if (shrink > 1) {
+		g_debug ("    Shrinking %dx%d image by a factor of %d.", x->Xsize, x->Ysize, shrink);
+		if (vips_shrink (x, &t[1], shrink, shrink, NULL) ||
+		    vips_affine (t[1], &t[2], residual, 0, 0, residual, "interpolate", interp, NULL)) {
+			g_warning ("Failed: %s", vips_error_buffer ());
+			vips_error_clear ();
 			goto _done;
 		}
-		g_debug ("    Sharpening done.");
-		x = t[3];
+		g_debug ("    Shrinking done.");
+		x = t[2];
+	} else {
+		g_debug ("    Not shrinking %dx%d image.", x->Xsize, x->Ysize);
 	}
 
 	if (vips_image_write (x, out)) {
@@ -222,10 +188,6 @@ _done:
 
 	if (NULL != t[2]) {
 		g_object_unref (t[2]);
-	}
-
-	if (NULL != t[3]) {
-		g_object_unref (t[3]);
 	}
 
 	return fnval;
