@@ -1,15 +1,15 @@
 .TH dmapd 8
 .SH NAME
 .PP
-dmapd \- Serve DAAP (iTunes) and DPAP (iPhoto) shares from Linux
+dmapd \- A server that provides DAAP and DPAP shares
 .SH SYNOPSIS
 .PP
 .B dmapd [options]
 .SH OVERVIEW
 .PP
 
-The dmapd project provides a GObject-based, Open Source DMAP server with
-the following features:
+The dmapd project provides a GObject-based, Open Source implementation 
+of DMAP sharing with the following features:
 
  o Support for both DAAP and DPAP
 
@@ -92,6 +92,12 @@ Dmapd supports the following environment variables:
 .TP
 DMAPD_DEBUG
 Enable verbose debugging messages
+.TP
+DMAPD_CONFIG_FILE
+Path to an alternate configuration file
+.TP
+DMAPD_MODULEDIR
+Directory containing dmapd modules
 .TP
 DMAPD_AV_META_READER_MODULE
 Name of an alternate AV module

@@ -1,11 +1,11 @@
 Copyright (C) 2003 W. Michael Petullo <mike@flyn.org>
 
-dmapd is Serve DAAP (iTunes) and DPAP (iPhoto) shares from Linux
+dmapd is A server that provides DAAP and DPAP shares
 
 = OVERVIEW =================================================================
 	
-The dmapd project provides a GObject-based, Open Source DMAP server 
-with the following features:
+The dmapd project provides a GObject-based, Open Source implementation 
+of DMAP sharing with the following features:
 
  o Support for both DAAP and DPAP
 
@@ -94,6 +94,12 @@ Dmapd supports the following environment variables:
 
 DMAPD_DEBUG
     Enable verbose debugging messages
+
+DMAPD_CONFIG_FILE
+    Path to an alternate configuration file
+
+DMAPD_MODULEDIR
+    Directory containing dmapd modules
 
 DMAPD_AV_META_READER_MODULE
     Name of an alternate AV module

@@ -489,7 +489,6 @@ int main (int argc, char *argv[])
 
 	workers_t workers = { NULL, NULL, NULL, NULL };
 
-	g_type_init ();
 	stringleton_init ();
 
 	loop = g_main_loop_new (NULL, FALSE);

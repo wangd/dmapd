@@ -27,7 +27,7 @@
 
 struct AVMetaReaderGstPrivate {
 	GMainLoop *loop;
-	GMutex *tag_read;
+	GMutex tag_read;
 	GstElement *pipeline;
 	GstElement *src_decoder;
 	GstElement *sink;
@@ -336,7 +336,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	GstTagList *tags = NULL;
 	AVMetaReaderGst *gst_reader = AV_META_READER_GST (reader);	
 
-	g_mutex_lock (gst_reader->priv->tag_read);
+	g_mutex_lock (&gst_reader->priv->tag_read);
 
 	g_debug("Processing %s...", uri);
 
@@ -411,7 +411,7 @@ _return:
 	gst_object_unref (gst_reader->priv->pipeline);
 	av_meta_reader_gst_reset (gst_reader);
 
-	g_mutex_unlock (gst_reader->priv->tag_read);
+	g_mutex_unlock (&gst_reader->priv->tag_read);
 
 	return TRUE;
 }
@@ -435,7 +435,8 @@ static void av_meta_reader_gst_init (AVMetaReaderGst *reader)
 {
 	reader->priv = AV_META_READER_GST_GET_PRIVATE (reader);
 
-	reader->priv->tag_read = g_mutex_new ();
+	// FIXME: Never cleared.
+	g_mutex_init (&reader->priv->tag_read);
 
 	reader->priv->loop = g_main_loop_new (NULL, FALSE);
 	av_meta_reader_gst_reset (reader);

@@ -38,7 +38,7 @@ av_render_now_playing_record (DACPPlayer * player)
 		now_playing_record (player);
 }
 
-const guchar *
+guchar *
 av_render_now_playing_artwork (DACPPlayer * player, guint width,
 				 guint height)
 {

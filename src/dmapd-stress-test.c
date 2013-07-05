@@ -202,7 +202,6 @@ int main(int argc, char **argv)
 	DMAPMdnsBrowser *browserDAAP, *browserDPAP;
 	GError *error = NULL;
 
-	g_type_init ();
 	stringleton_init ();
 
 	g_log_set_handler ("libdmapsharing", G_LOG_LEVEL_DEBUG, debug_null, NULL);

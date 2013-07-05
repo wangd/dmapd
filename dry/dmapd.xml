@@ -3,17 +3,17 @@
 	<keywords>linux dmap daap dpap iPhoto iTunes server</keywords>
 	<mansect>8</mansect>
 	<copyright>GPLv2+</copyright>
-	<one-liner>Serve DAAP (iTunes) and DPAP (iPhoto) shares from Linux</one-liner>
+	<one-liner>A server that provides DAAP and DPAP shares</one-liner>
 	<synopsis>[options]</synopsis>
 	<url>http://www.flyn.org/projects/dmapd/</url>
 	<maintainer>W. Michael Petullo &lt;mike@flyn.org&gt;</maintainer>
 	<architecture>any</architecture>
 	<rpm-group>Applications/Multimedia</rpm-group>
 	<rpm-pre-requires>shadow-utils</rpm-pre-requires>
-	<rpm-post-requires>chkconfig</rpm-post-requires>
-	<rpm-preun-requires>chkconfig, initscripts</rpm-preun-requires>
-	<rpm-postun-requires>initscripts</rpm-postun-requires>
-	<rpm-build-requires>libdmapsharing-devel >= 2.1.2, vips-devel, gstreamer-devel</rpm-build-requires>
+	<rpm-post-requires>systemd-units systemd-sysv</rpm-post-requires>
+	<rpm-preun-requires>systemd-units</rpm-preun-requires>
+	<rpm-postun-requires>systemd-units</rpm-postun-requires>
+	<rpm-build-requires>libdmapsharing-devel >= 2.9.18, vips-devel, gstreamer1-devel</rpm-build-requires>
 	<deb-section></deb-section>
 	<deb-priority>optional</deb-priority>
 	<deb-depends></deb-depends>
@@ -26,8 +26,8 @@
 	</options>
 <overview>
 <para>
-The dmapd project provides a GObject-based, Open Source DMAP server with
-the following features:
+The dmapd project provides a GObject-based, Open Source implementation 
+of DMAP sharing with the following features:
 </para>
 <itemizedlist>
 	<listitem>Support for both DAAP and DPAP</listitem>
@@ -194,21 +194,18 @@ media types:
 </itemizedlist>
 </nasty-details>
 
-<configure-flags>--disable-static</configure-flags>
+<configure-flags>                               \
+	--disable-static                        \
+	--with-systemdsystemunitdir=%{_unitdir}</configure-flags>
 
 <rpm-install>
 	<command>rm -f %{buildroot}%{_libdir}/libdmapd.la</command>
 	<command>rm -f %{buildroot}%{_libdir}/dmapd/%{version}/modules/*.la</command>
 	<command>rm -f %{buildroot}%{_sbindir}/dmapd-test</command>
 
-	<!-- Remove for systemd: -->
-	<command>rm -f %{buildroot}/lib/systemd/system/dmapd.service</command>
-
-	<command>mkdir -p %{buildroot}%{_localstatedir}/cache/dmapd</command>
+	<command>mkdir -p %{buildroot}%{_localstatedir}/cache/dmapd/DAAP</command>
+	<command>mkdir -p %{buildroot}%{_localstatedir}/cache/dmapd/DPAP</command>
 	<command>mkdir -p %{buildroot}%{_localstatedir}/run/dmapd</command>
-
-	<!-- Remove for systemd: -->
-	<command>install -D -m 755 distro/dmapd.fedora %{buildroot}%{_initddir}/dmapd</command>
 
 	<command>install -D -m 644 distro/dmapd.conf %{buildroot}%{_sysconfdir}/dmapd.conf</command>
 </rpm-install>
@@ -222,61 +219,39 @@ media types:
 <rpm-post-install>
 	<command>/sbin/ldconfig</command>
 
-	<!-- Add for systemd:
 	<command>if [ $1 -eq 1 ]; then</command>
 	<command>       /bin/systemctl enable dmapd.service >/dev/null 2>&amp;1 || :</command>
 	<command>fi</command>
-	-->
-
-	<!-- Remove for systemd: -->
-	<command>/sbin/chkconfig --add dmapd</command>
-
 </rpm-post-install>
 
 <rpm-pre-uninstall>
-	<!-- Add for systemd:
 	<command>if [ $1 -eq 0 ]; then</command>
-	<command>	/bin/systemctl disable dmapd.service >/dev/null 2>&amp;1 || :</command>
+	<command>	/bin/systemctl --no-reload disable dmapd.service >/dev/null 2>&amp;1 || :</command>
 	<command>	/bin/systemctl stop dmapd.service >/dev/null 2>&amp;1 || :</command>
 	<command>fi</command>
-	-->
-
-	<!-- Remove for systemd: -->
-	<command>if [ $1 = 0 ]; then /sbin/service dmapd stop >/dev/null 2>&amp;1; /sbin/chkconfig --del dmapd; fi</command>
-
 </rpm-pre-uninstall>
 
 <rpm-post-uninstall>
 	<command>/sbin/ldconfig</command>
-
-	<!-- Add for systemd:
-	<command>if [ $1 -ge 1 ] ; then</command>
-	<command>	/bin/systemctl daemon-reload >/dev/null 2>&amp;1 || :</command>
+	<command>if [ $1 -ge 1 ]; then</command>
 	<command>	/bin/systemctl try-restart dmapd.service >/dev/null 2>&amp;1 || :</command>
 	<command>fi</command>
-	-->
-
-	<!-- Remove for systemd: -->
-	<command>if [ "$1" -ge "1" ]; then /sbin/service dmapd condrestart >/dev/null 2>&amp;1 || :; fi</command>
 </rpm-post-uninstall>
 
 <files>
 	<path>%{_libdir}/*.so.0</path>
 	<path>%{_libdir}/*.so.%{version}</path>
 	<path>%{_libdir}/dmapd</path>
+	<path>%{_bindir}/dmapd-hashgen</path>
+	<path>%{_bindir}/dmapd-transcode</path>
 	<path>%{_sbindir}/dmapd</path>
-
-	<!-- Remove for systemd: -->
-	<path>%{_initddir}/dmapd</path>
-
-	<!-- Add for systemd:
-	<path>/lib/systemd/system/dmapd.service</path>
-	-->
-
 	<path>%config(noreplace) %{_sysconfdir}/dmapd.conf</path>
 	<path>%attr(0700,dmapd,root) %{_localstatedir}/cache/dmapd</path>
+	<path>%attr(0700,dmapd,root) %{_localstatedir}/cache/dmapd/DAAP</path>
+	<path>%attr(0700,dmapd,root) %{_localstatedir}/cache/dmapd/DPAP</path>
 	<path>%attr(0700,dmapd,root) %{_localstatedir}/run/dmapd</path>
         <path>%{_mandir}/*/*</path>
+	<path>%{_unitdir}/dmapd.service</path>
 </files>
 
 <package name="devel">
@@ -293,6 +268,8 @@ needed for developing modules using dmapd's API.
 		<path>%{_libdir}/pkgconfig/dmapd.pc</path>
 		<path>%{_includedir}/dmapd-*/</path>
 		<path>%{_libdir}/*.so</path>
+		<path>%ghost %attr(0755,dmapd,dmapd) %dir %{_localstatedir}/run/dmapd</path>
+		<path>%ghost %attr(0600,root,root) %{_localstatedir}/lock/subsys/dmapd</path>
 	</files>
 </package>
 

@@ -26,11 +26,11 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include "dmapd-dmap-db.h"
-#include "dmapd-daap-record.h"
+#include "dmapd-dmap-container-record.h"
+#include "dmapd-dmap-container-db.h"
 #include "dmapd-daap-record-factory.h"
 #include "db-builder.h"
-#include "av-meta-reader.h"
+#include "util.h"
 #include "util-gst.h"
 
 #define DEFAULT_DB_MOD                "ghashtable"
@@ -163,7 +163,6 @@ int main (int argc, char *argv[])
 	GOptionContext *context;
 	AVMetaReader *av_meta_reader = NULL;
 
-	g_type_init ();
 	stringleton_init ();
 
 	loop = g_main_loop_new (NULL, FALSE);

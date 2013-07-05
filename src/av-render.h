@@ -49,7 +49,7 @@ struct _AVRenderClass {
         GObjectClass parent;
 
 	DAAPRecord *(*now_playing_record) (DACPPlayer * player);
-	const guchar *(*now_playing_artwork) (DACPPlayer * player,
+	guchar *(*now_playing_artwork) (DACPPlayer * player,
 					      guint width, guint height);
 	void (*play_pause) (DACPPlayer * player);
 	void (*pause) (DACPPlayer * player);
@@ -63,7 +63,7 @@ struct _AVRenderClass {
 GType       av_render_get_type      (void);
 
 DAAPRecord *dacp_player_now_playing_record (DACPPlayer * player);
-const guchar *dacp_player_now_playing_artwork (DACPPlayer * player,
+guchar *dacp_player_now_playing_artwork (DACPPlayer * player,
 					       guint width, guint height);
 void dacp_player_play_pause (DACPPlayer * player);
 void dacp_player_pause (DACPPlayer * player);

@@ -71,7 +71,7 @@ av_render_gst_now_playing_record (DACPPlayer * player)
 	return fnval;
 }
 
-const guchar *
+guchar *
 av_render_gst_now_playing_artwork (DACPPlayer * player, guint width,
 				 guint height)
 {
