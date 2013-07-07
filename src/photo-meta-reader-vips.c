@@ -357,10 +357,6 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 		goto _done;
 	}
 
-	/* Get this here because it will be changed by thumbnailing process: */
-	x = im->Xsize;
-	y = im->Ysize;
-
 	if (0 != stat (path, &buf)) {
 		g_warning ("Unable to determine size of %s", path);
 	} else {
@@ -394,7 +390,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 	g_debug ("    Tag pixel width is %d.",  im->Xsize);
 	g_debug ("    Tag pixel height is %d.", im->Ysize);
 
-	aspect_ratio = g_strdup_printf ("%f", x / (float) y);
+	aspect_ratio = g_strdup_printf ("%f", im->Xsize / (float) im->Ysize);
 	if (NULL == aspect_ratio) {
 		g_warning ("Could not set aspect ratio\n");
 	} else {
