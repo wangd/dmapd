@@ -96,7 +96,7 @@ calculate_shrink (PhotoMetaReader * reader, int width, int height, double *resid
 }
 
 static gboolean
-thumbnail3 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
+generate_thumbnail2 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
 {
 	g_assert (IS_PHOTO_META_READER (reader));
 	g_assert (NULL != in);
@@ -194,7 +194,7 @@ _done:
 }
 
 static gboolean
-thumbnail2 (PhotoMetaReader * reader, VipsImage * in, VipsFormatClass * format,
+generate_thumbnail (PhotoMetaReader * reader, VipsImage * in, VipsFormatClass * format,
            void **thumb, size_t * size)
 {
 	g_assert (IS_PHOTO_META_READER (reader));
@@ -219,7 +219,7 @@ thumbnail2 (PhotoMetaReader * reader, VipsImage * in, VipsFormatClass * format,
 		goto _done;
 	}
 
-	if (FALSE == thumbnail3 (reader, in, out)) {
+	if (FALSE == generate_thumbnail2 (reader, in, out)) {
 		goto _done;
 	}
 
@@ -250,8 +250,82 @@ _done:
 	return got_thumb;
 }
 
+static gboolean
+format_is_jpeg (VipsFormatClass *format)
+{
+	g_assert (NULL != format);
+
+	return strcmp (VIPS_OBJECT_CLASS (format)->nickname, "jpeg") == 0;
+}
+
+static gboolean
+jpeg_is_multiscan (VipsImage *in)
+{
+	g_assert (NULL != in);
+
+	gboolean fnval = FALSE;
+
+	if (vips_image_get_typeof (in, "jpeg-multiscan")) {
+		int multiscan;
+		if (vips_image_get_int (in, "jpeg-multiscan", &multiscan)) {
+			g_warning ("Failed to determine if %s multiscan: %s",
+				    in->filename, vips_error_buffer ());
+			vips_error_clear ();
+			goto _done;
+		}
+
+		fnval = multiscan != 0;
+	}
+
+_done:
+	return fnval;
+}
+
+static gboolean
+jpeg_contains_thumbnail (VipsImage *in)
+{
+	g_assert (NULL != in);
+
+	return vips_image_get_typeof (in, "jpeg-thumbnail-data");
+}
+
+static VipsImage *
+extract_thumbnail (VipsImage *image)
+{
+	VipsImage *thumbnail  = NULL;
+	void  *thumbnail_data = NULL;
+	size_t thumbnail_size;
+
+	if (0 != vips_image_get_blob (image, "jpeg-thumbnail-data", &thumbnail_data, &thumbnail_size)) {
+		g_warning ("Failed to read EXIF thumbnail %s: %s", image->filename, vips_error_buffer ());
+		vips_error_clear ();
+		goto _done;
+	}
+
+	g_debug ("    Read EXIF thumbnail of size %lu.", thumbnail_size);
+
+	// This is expected to be small; open in memory.
+	thumbnail = vips_image_new_mode ("thumb", "t");
+	if (NULL == thumbnail) {
+		g_warning ("Could not open existing thumbnail: %s", vips_error_buffer ());
+		vips_error_clear ();
+		goto _done;
+	}
+
+	if (0 != vips_jpegload_buffer (thumbnail_data, thumbnail_size, &thumbnail, NULL)) {
+		g_warning ("Could not decode existing thumbnail: %s", vips_error_buffer ());
+		vips_error_clear ();
+		g_object_unref (thumbnail);
+		thumbnail = NULL;
+		goto _done;
+	}
+
+_done:
+	return thumbnail;
+}
+
 static int
-thumbnail (PhotoMetaReader *reader, VipsImage *in, VipsFormatClass *format,
+extract_or_generate_thumbnail (PhotoMetaReader *reader, VipsImage *in, VipsFormatClass *format,
 	   void **thumb, size_t *size)
 {
 	g_assert (IS_PHOTO_META_READER (reader));
@@ -265,58 +339,26 @@ thumbnail (PhotoMetaReader *reader, VipsImage *in, VipsFormatClass *format,
 	*size = 0;
 	*thumb = NULL;
 
-	if (strcmp (VIPS_OBJECT_CLASS (format)->nickname, "jpeg") == 0) {
+	if (format_is_jpeg (format)) {
 		/* JPEGs get special treatment. */
-		if (vips_image_get_typeof (in, "jpeg-thumbnail-data")) {
-			void *ptr;
-
-			if (0 != vips_image_get_blob (in, "jpeg-thumbnail-data", &ptr, size)) {
-				g_warning ("Failed to read EXIF thumbnail %s: %s", in->filename, vips_error_buffer ());
-				vips_error_clear ();
-				goto _done;
-			}
-
-			g_debug ("    Read EXIF thumbnail of size %lu.", *size);
-
-			// Process EXIF thumbnail instead (may need to shrink more).
-			// This is expected to be small; open in memory.
-			in2 = vips_image_new_mode ("thumb", "t");
+		if (jpeg_contains_thumbnail (in)) {
+			in2 = extract_thumbnail (in);
 			if (NULL == in2) {
-				g_warning ("Could not open existing thumbnail: %s", vips_error_buffer ());
-				vips_error_clear ();
 				goto _done;
 			}
-
-			if (im_bufjpeg2vips (ptr, *size, in2, FALSE)) {
-				g_warning ("Could not decode existing thumbnail: %s", vips_error_buffer ());
-				vips_error_clear ();
-				goto _done;
-			}
-
-			got_thumb = thumbnail2 (reader, in2, format, thumb, size);
-			goto _done;
-
-		} else if (vips_image_get_typeof (in, "jpeg-multiscan")) {
+		} else if (! jpeg_is_multiscan (in)) {
+			in2 = g_object_ref (in);
+		} else {
 			// libjpeg handles multiscan JPEGs differently.
 			// Avoid this because of memory use on small devices.
-
-			int multiscan;
-
-			if (vips_image_get_int (in, "jpeg-multiscan", &multiscan)) {
-				g_warning ("Failed to determine if %s multiscan: %s",
-				            in->filename, vips_error_buffer ());
-				vips_error_clear ();
-				goto _done;
-			}
-
-			if (multiscan) {
-				g_warning ("Will not try to thumbnail multiscan JPEG at %s", in->filename);
-				goto _done;
-			}
+			g_warning ("Will not try to thumbnail multiscan JPEG at %s", in->filename);
+			goto _done;
 		}
+	} else {
+		in2 = g_object_ref (in);
 	}
 
-	got_thumb = thumbnail2 (reader, in, format, thumb, size);
+	got_thumb = generate_thumbnail (reader, in2, format, thumb, size);
 
 _done:
 	if (NULL != in2) {
@@ -432,12 +474,12 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 		}
 	}
 
-	if (thumbnail (reader, im, format, &thumbnail_data, &thumbnail_size)) {
+	if (extract_or_generate_thumbnail (reader, im, format, &thumbnail_data, &thumbnail_size)) {
 		g_debug ("    Thumbnail is %ld bytes", thumbnail_size);
 		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
 		if (NULL == thumbnail_array) {
 			// FIXME: I think the thumbnail prop. MUST be non-NULL;
-			//        if not, this could be cleaned up and non-fatal.
+			//        if not, this could be cleaned up and made non-fatal.
 			g_error ("Could not allocate memory for thumbnail array\n");
 		} else {
 			g_byte_array_append (thumbnail_array, thumbnail_data, thumbnail_size);
