@@ -38,6 +38,15 @@ enum {
 
 static GMainLoop *loop;
 
+static gchar *service_name = NULL;
+static guint iteration_count = ~0;
+
+static GOptionEntry entries[] = {
+        { "service-name", 's', 0, G_OPTION_ARG_STRING, &service_name, "Server name to connect to; default is to query user interactively", NULL },
+        { "iteration-count", 'i', 0, G_OPTION_ARG_INT, &iteration_count, "Number of times to hit server; default is forever", NULL },
+	{ NULL }
+};
+
 static void
 create_connection (const DMAPMdnsBrowserServiceType protocol,
 		   const char *name,
@@ -45,47 +54,63 @@ create_connection (const DMAPMdnsBrowserServiceType protocol,
 		   const guint port);
 
 static void
-print_record (gpointer id, DMAPRecord *record, gpointer user_data)
+process_record (gpointer id, DMAPRecord *record, gpointer user_data)
 {
+	guint status;
+	SoupSession *soup_session;
+	SoupMessage *soup_message;
+	gchar *location = NULL, *desc1 = NULL, *desc2 = NULL;
+
 	if (IS_DAAP_RECORD (record)) {
-		gchar *artist = NULL, *title = NULL;
-
 		/* FIXME: print all record properties; need DAAP and DPAP version: */
 		g_object_get (record,
-			     "songartist", &artist,
-			     "title",  &title,
+			     "location",   &location,
+			     "songartist", &desc1,
+			     "title",      &desc2,
 			     NULL);
 
-		g_assert (artist);
-		g_assert (title);
+		g_assert (location);
+		g_assert (desc1);
+		g_assert (desc2);
 
 		/* FIXME: also actually download media file. */
 
-		g_print ("%d: %s %s\n", GPOINTER_TO_UINT (id), artist, title);
-
-		g_free (artist);
-		g_free (title);
+		g_print ("%d: %s %s %s\n", GPOINTER_TO_UINT (id), desc1, desc2, location);
 	} else if (IS_DPAP_RECORD (record)) {
-		gchar *filename = NULL, *format = NULL;
-
 		/* FIXME: print all record properties; need DAAP and DPAP version: */
 		g_object_get (record,
-			     "filename", &filename,
-			     "format",  &format,
+			     "location", &location,
+			     "filename", &desc1,
+			     "format",   &desc2,
 			     NULL);
 
-		g_assert (filename);
-		g_assert (format);
+		g_assert (location);
+		g_assert (desc1);
+		g_assert (desc2);
 
 		/* FIXME: also actually download media file. */
 
-		g_print ("%d: %s %s\n", GPOINTER_TO_UINT (id), filename, format);
-
-		g_free (filename);
-		g_free (format);
+		g_print ("%d: %s %s %s\n", GPOINTER_TO_UINT (id), desc1, desc2, location);
 	} else {
 		g_error ("Bad record");
 	}
+
+	g_print ("Fetching...");
+
+	soup_session = soup_session_new ();
+	g_assert (soup_session);
+
+	soup_message = soup_message_new ("GET", location);
+	g_assert (soup_message);
+
+	status = soup_session_send_message (soup_session, soup_message);
+	g_assert (SOUP_STATUS_OK == status);
+
+	g_print ("done; length was %d bytes.\n", soup_message->response_body->length);
+
+	g_free (location);
+	g_free (desc1);
+	g_free (desc2);
 }
 
 static DMAPMdnsBrowserServiceType
@@ -108,10 +133,12 @@ connected_cb (DMAPConnection *connection,
 {
 	guint port;
 	char *name, *host;
+	static guint count = 1; // This counts up, iteration_count goes down.
 
 	g_print ("Connection cb., DB has %lu entries\n", dmap_db_count (db));
+	g_print ("Iteration %d...\n", count++);
 
-	dmap_db_foreach (db, (GHFunc) print_record, NULL);
+	dmap_db_foreach (db, (GHFunc) process_record, NULL);
 
 	g_object_get (connection,
 		     "name", &name,
@@ -122,11 +149,15 @@ connected_cb (DMAPConnection *connection,
 	/* Tear down connection. */
 	g_object_unref (connection);
 
-	/* Create another connection to same service. */
-	create_connection (get_service_type (connection),
-			   name,
-			   host,
-			   port);
+	if (--iteration_count > 0) {
+		/* Create another connection to same service. */
+		create_connection (get_service_type (connection),
+				   name,
+				   host,
+				   port);
+	} else {
+		g_main_loop_quit (loop);
+	}
 
 	g_free (name);
 	g_free (host);
@@ -171,15 +202,19 @@ service_added_cb (DMAPMdnsBrowser *browser,
 {
 	char answer, newline;
 
-	fprintf (stdout,
-	    "service added %s:%s:%s:%d (%s)\n",
-	     service->service_name,
-	     service->name,
-	     service->host,
-	     service->port,
-	     service->password_protected ? "protected" : "not protected");
-	fprintf (stdout, "Stress test this service [Y|N]? ");
-	fscanf (stdin, "%c%c", &answer, &newline);
+	if (NULL == service_name) {
+		fprintf (stdout,
+		    "service added %s:%s:%s:%d (%s)\n",
+		     service->service_name,
+		     service->name,
+		     service->host,
+		     service->port,
+		     service->password_protected ? "protected" : "not protected");
+		fprintf (stdout, "Stress test this service [Y|N]? ");
+		fscanf (stdin, "%c%c", &answer, &newline);
+	} else {
+		answer = strcmp (service->service_name, service_name) ? 'N' : 'Y';
+	}
 
 	if (answer == 'Y') {
 		create_connection (dmap_mdns_browser_get_service_type (browser),
@@ -199,6 +234,7 @@ debug_null (const char *log_domain,
 
 int main(int argc, char **argv)
 {
+	GOptionContext *context;
 	DMAPMdnsBrowser *browserDAAP, *browserDPAP;
 	GError *error = NULL;
 
@@ -206,6 +242,13 @@ int main(int argc, char **argv)
 
 	g_log_set_handler ("libdmapsharing", G_LOG_LEVEL_DEBUG, debug_null, NULL);
 	g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, debug_null, NULL);
+
+	context = g_option_context_new ("Stress test dmapd");
+        g_option_context_add_main_entries (context, entries, NULL);
+
+	if (! g_option_context_parse (context, &argc, &argv, &error)) {
+                g_error ("Option parsing failed: %s", error->message);
+        }
 
 	loop = g_main_loop_new (NULL, FALSE);
 
@@ -241,8 +284,10 @@ int main(int argc, char **argv)
 		exit (EXIT_FAILURE);
 	}
 
-	fprintf (stdout, "Waiting for DMAP shares; please run dmapd\n");
+	fprintf (stdout, "Waiting for DMAP shares; please run dmapd.\n");
 	g_main_loop_run (loop);
+
+	fprintf (stdout, "Stress test complete.\n");
 
 	exit (EXIT_SUCCESS);
 }
