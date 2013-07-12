@@ -25,10 +25,12 @@ bin_PROGRAMS = \
 	dmapd-hashgen
 endif
 
+if WITH_TESTS
 noinst_PROGRAMS = dmapd-stress-test
 
 if HAVE_CHECK
 noinst_PROGRAMS += dmapd-unit-test
+endif
 endif
 
 dmapd_SOURCES = \
@@ -46,6 +48,7 @@ dmapd_hashgen_SOURCES = \
 
 dmapd_hashgen_LDADD = libdmapd.la
 
+if WITH_TESTS
 dmapd_stress_test_SOURCES = \
 	dmapd-stress-test.c
 
@@ -59,6 +62,7 @@ dmapd_unit_test_SOURCES = \
 
 dmapd_unit_test_LDADD = libdmapd.la @CHECK_LIBS@
 dmapd_unit_test_INCLUDES = @CHECK_CFLAGS@
+endif
 endif
 
 lib_LTLIBRARIES = libdmapd.la

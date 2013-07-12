@@ -40,18 +40,32 @@ AC_ARG_ENABLE(daap, [  --disable-daap          do not build DAAP support], daap=
 if test x$daap = xyes; then
 	AC_DEFINE(WITH_DAAP,1,[Defined when DAAP support is to be built])
 	AM_CONDITIONAL(WITH_DAAP, true)
+else
+	AM_CONDITIONAL(WITH_DAAP, false)
 fi
 
 AC_ARG_ENABLE(dpap, [  --disable-dpap          do not build DPAP support], dpap=$enableval, dpap=yes)
 if test x$dpap = xyes; then
 	AC_DEFINE(WITH_DPAP,1,[Defined when DPAP support is to be built])
 	AM_CONDITIONAL(WITH_DPAP, true)
+else
+	AM_CONDITIONAL(WITH_DPAP, false)
 fi
 
 AC_ARG_ENABLE(dacp, [  --disable-dacp          do not build DACP support], dacp=$enableval, dacp=yes)
 if test x$dacp = xyes; then
 	AC_DEFINE(WITH_DACP,1,[Defined when DACP support is to be built])
 	AM_CONDITIONAL(WITH_DACP, true)
+else
+	AM_CONDITIONAL(WITH_DACP, false)
+fi
+
+AC_ARG_ENABLE(tests, [  --disable-tests         do not build tests], tests=$enableval, tests=yes)
+if test x$tests = xyes; then
+	AC_DEFINE(WITH_TESTS,1,[Defined when tests are to be built])
+	AM_CONDITIONAL(WITH_TESTS, true)
+else
+	AM_CONDITIONAL(WITH_TESTS, false)
 fi
 
 dnl Check for pkgconfig
