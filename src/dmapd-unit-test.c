@@ -52,7 +52,6 @@ void run_suite (Suite *s)
 
 int main(void)
 {
-	g_type_init ();
 	stringleton_init ();
 	g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, debug_null, NULL);
 

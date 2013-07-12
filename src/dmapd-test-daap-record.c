@@ -31,6 +31,7 @@ START_TEST(test_dmapd_daap_record_add_lookup)
 	factory = g_object_new (TYPE_DMAPD_DAAP_RECORD_FACTORY, NULL);
 
 	DMAPDb *db = DMAP_DB (object_from_module (TYPE_DMAPD_DMAP_DB,
+	                                          DEFAULT_MODULEDIR,
 						 "ghashtable",
 						 "record-factory",
 						  factory,
