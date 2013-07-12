@@ -6,7 +6,7 @@ endif
 SUBDIRS = distro dry src
 DIST_SUBDIRS = distro dry src
 
-EXTRA_DIST = autogen.sh FAQ README.release-protocol
+EXTRA_DIST = autogen.sh FAQ
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = dmapd.pc
