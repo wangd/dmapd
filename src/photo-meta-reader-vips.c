@@ -57,7 +57,7 @@ photo_meta_reader_vips_get_option_group (PhotoMetaReader * reader)
  * bilinear interpolation to get the exact size we want.
  */
 static int
-calculate_shrink (PhotoMetaReader * reader, int width, int height, double *residual)
+calculate_shrink (PhotoMetaReader *reader, int width, int height, double *residual)
 {
 	g_assert (NULL != reader);
 
@@ -95,309 +95,268 @@ calculate_shrink (PhotoMetaReader * reader, int width, int height, double *resid
 	return shrink;
 }
 
-static gboolean
-generate_thumbnail2 (PhotoMetaReader * reader, VipsImage * in, VipsImage * out)
+/* Find the best jpeg preload shrink.
+ */
+static int
+thumbnail_find_jpegshrink (PhotoMetaReader *reader, VipsImage *im)
 {
-	g_assert (IS_PHOTO_META_READER (reader));
-	g_assert (NULL != in);
-	g_assert (NULL != out);
+	int shrink = calculate_shrink (reader, im->Xsize, im->Ysize, NULL);
 
-	gboolean fnval = FALSE; 
-	VipsImage *t[3] = { NULL, NULL, NULL };
-	VipsImage *x = NULL;
-	VipsInterpolate *interp = NULL;
-	int shrink;
+	if (shrink >= 8)
+		return 8;
+	else if (shrink >= 4)
+		return 4;
+	else if (shrink >= 2)
+		return 2;
+	else 
+		return 1;
+}
+
+#define THUMBNAIL "jpeg-thumbnail-data"
+
+/* Try to read an embedded thumbnail. 
+ */
+static VipsImage *
+thumbnail_get_thumbnail (PhotoMetaReader *reader, VipsImage *im)
+{
+	void *ptr;
+	size_t size;
+	VipsImage *thumb;
 	double residual;
+	int jpegshrink;
+
+	if (!vips_image_get_typeof (im, THUMBNAIL) ||
+		vips_image_get_blob (im, THUMBNAIL, &ptr, &size) ||
+		vips_jpegload_buffer (ptr, size, &thumb, NULL)) {
+		g_debug ("no jpeg thumbnail"); 
+		return NULL; 
+	}
+
+	(void) calculate_shrink (reader, thumb->Xsize, thumb->Ysize, &residual);
+	if (residual > 1.0) { 
+		g_debug ("jpeg thumbnail too small"); 
+		g_object_unref (thumb); 
+		return NULL; 
+	}
+
+	/* Reload with the correct downshrink.
+	 */
+	jpegshrink = thumbnail_find_jpegshrink (reader, thumb);
+	g_debug ("loading jpeg thumbnail with factor %d pre-shrink", jpegshrink);
+	g_object_unref (thumb);
+	if( vips_jpegload_buffer (ptr, size, &thumb, 
+		"shrink", jpegshrink,
+		NULL)) {
+		g_debug ("jpeg thumbnail reload failed"); 
+		return NULL; 
+	}
+
+	return thumb;
+}
+
+/* Open an image, returning the best version of that image for thumbnailing. 
+ *
+ * jpegs can have embedded thumbnails ... use that if it's large enough.
+ *
+ * libjpeg supports fast shrink-on-read, so if we have a JPEG, we can ask 
+ * VIPS to load a lower resolution version.
+ */
+static VipsImage *
+thumbnail_open (PhotoMetaReader *reader, VipsObject *process, const char *filename)
+{
+	const char *loader;
+	VipsImage *im;
+	int multiscan;
+
+	g_debug ("thumbnailing %s", filename);
+
+	if (!(loader = vips_foreign_find_load (filename)))
+		return NULL;
+
+	g_debug ("selected loader is \"%s\"", loader); 
+
+	if (strcmp (loader, "VipsForeignLoadJpegFile") == 0) {
+		VipsImage *thumb;
+
+		/* This will just read in the header and is quick.
+		 */
+		if (!(im = vips_image_new_from_file (filename)))
+			return NULL;
+		vips_object_local (process, im);
+
+		/* Try to read an embedded thumbnail. If we find one, use that
+		 * instead.
+		 */
+		if ((thumb = thumbnail_get_thumbnail (reader, im))) { 
+			vips_object_local (process, thumb);
+
+			g_debug ("using %dx%d embedded jpeg thumbnail", thumb->Xsize, thumb->Ysize); 
+
+			/* @thumb has not been fully decoded yet ... 
+			 * we must not close @im until we're done with @thumb.
+			 */
+			vips_object_local (VIPS_OBJECT (thumb), im);
+
+			im = thumb;
+		} else if (vips_image_get_typeof (im, "jpeg-multiscan") &&
+			!vips_image_get_int (im, "jpeg-multiscan", &multiscan) &&
+			multiscan) {
+			// libjpeg handles multiscan JPEGs differently.
+			// Avoid this because of memory use on small devices.
+			g_warning ("Will not try to thumbnail multiscan JPEG at %s", im->filename);
+			return NULL;
+		} else {
+			int jpegshrink;
+
+			g_debug ("processing main jpeg image");
+
+			jpegshrink = thumbnail_find_jpegshrink (reader, im);
+
+			g_debug ("loading jpeg with factor %d pre-shrink", jpegshrink); 
+
+			if (vips_foreign_load (filename, &im,
+				"sequential", TRUE,
+				"shrink", jpegshrink,
+				NULL))
+				return NULL;
+			vips_object_local (process, im);
+		}
+	}
+	else {
+		/* All other formats.
+		 */
+		if (vips_foreign_load (filename, &im,
+			"sequential", TRUE,
+			NULL))
+			return NULL;
+		vips_object_local (process, im);
+	}
+
+	return im; 
+}
+
+static gboolean
+thumbnail_shrink (PhotoMetaReader *reader, VipsObject *process, VipsImage *in,
+           void **thumb, size_t *size)
+{
+	VipsImage **t = (VipsImage **) vips_object_local_array (process, 10);
+
+	int shrink; 
+	double residual; 
+	VipsInterpolate *interp;
+	int tile_width;
+	int tile_height;
+	int nlines;
+
+	/* Unpack the two coded formats we support.
+	 */
+	if (in->Coding == VIPS_CODING_LABQ) {
+		g_debug ("unpacking LAB to RGB");
+
+		if (vips_colourspace( in, &t[0], 
+			VIPS_INTERPRETATION_sRGB, NULL)) 
+			return FALSE; 
+
+		in = t[0];
+	}
+	else if (in->Coding == IM_CODING_RAD) {
+		g_debug ("unpacking Rad to float");
+
+		/* rad is scrgb.
+		 */
+		if (vips_rad2float (in, &t[1], NULL) ||
+			vips_colourspace (t[1], &t[2], VIPS_INTERPRETATION_sRGB, NULL)) 
+			return FALSE;
+
+		in = t[2];
+	}
 
 	shrink = calculate_shrink (reader, in->Xsize, in->Ysize, &residual);
+
+	g_debug ("integer shrink by %d", shrink);
+
+	if (vips_shrink (in, &t[3], shrink, shrink, NULL)) 
+		return FALSE;
+	in = t[3];
 
 	/* For images smaller than the thumbnail, we upscale with nearest
 	 * neighbor. Otherwise we make thumbnails that look fuzzy and awful.
 	 */
-	if (residual > 1.0) {
+	if (residual > 1.0) 
 		interp = vips_interpolate_nearest_static ();
-	} else {
+	else 
 		interp = vips_interpolate_bilinear_static ();
-	}
 
-	if (NULL == interp) {
-		g_warning ("Could not find interpolater");
-		goto _done;
-	}
+	g_debug ("residual scale by %g", residual);
+	g_debug ("%s interpolation", VIPS_OBJECT_GET_CLASS( interp )->nickname);
 
-	x = in;
+	vips_get_tile_size (in, &tile_width, &tile_height, &nlines);
+	if (vips_tilecache (in, &t[4], 
+		"tile_width", in->Xsize,
+		"tile_height", 10,
+		"max_tiles", (nlines * 2) / 10,
+		"strategy", VIPS_CACHE_SEQUENTIAL,
+		NULL) ||
+		vips_affine (t[4], &t[5], residual, 0, 0, residual, NULL, 
+			"interpolate", interp,
+			NULL))  
+		return FALSE;
+	in = t[5];
 
-	/* Unpack the two coded formats we support to float for processing.  */
-	switch (x->Coding) {
-		case IM_CODING_LABQ:
-			g_debug ("    Coding LABQ.");
-			if (vips_LabQ2sRGB (x, &t[0], NULL)) {
-				g_warning ("    Failed.");
-				goto _done;
-			}
-			g_debug ("    Done.");
-			x = t[0];
-			break;
-		case IM_CODING_RAD:
-			g_debug ("    Coding RAD.");
-			if (vips_rad2float (x, &t[0], NULL)) {
-				g_warning ("    Failed.");
-				goto _done;
-			}
-			g_debug ("    Done.");
-			x = t[0];
-			break;
-		case IM_CODING_NONE:
-			g_debug ("    No coding.");
-			break;
-		default:
-			g_warning ("    Unknown coding.");
-			goto _done;
-	}
+	/* Generate thumbnail to memory buffer.
+	 */
+	if (vips_jpegsave_buffer (in, thumb, size, NULL))
+		return FALSE;
 
-	if (shrink > 1) {
-		g_debug ("    Shrinking %dx%d image by a factor of %d.", x->Xsize, x->Ysize, shrink);
-		if (vips_shrink (x, &t[1], shrink, shrink, NULL) ||
-		    vips_affine (t[1], &t[2], residual, 0, 0, residual, "interpolate", interp, NULL)) {
-			g_warning ("Failed: %s", vips_error_buffer ());
-			vips_error_clear ();
-			goto _done;
-		}
-		g_debug ("    Shrinking done.");
-		x = t[2];
-	} else {
-		g_debug ("    Not shrinking %dx%d image.", x->Xsize, x->Ysize);
-	}
+	return TRUE;
+}
 
-	if (vips_image_write (x, out)) {
-		g_warning ("Could not copy: %s", vips_error_buffer ());
+static const char *
+photo_meta_reader_vips_get_str (VipsImage *im, const char *field)
+{
+	char *str;
+
+	if (!vips_image_get_typeof (im, field)) 
+		return NULL;
+
+	if (vips_image_get_string (im, field, &str)) {
+		g_warning ("Failed to read %s from %s: %s", field, im->filename, vips_error_buffer ());
 		vips_error_clear ();
-		goto _done;
+		return NULL;
 	}
 
-	fnval = TRUE;
-
-_done:
-	if (NULL != t[0]) {
-		g_object_unref (t[0]);
-	}
-
-	if (NULL != t[1]) {
-		g_object_unref (t[1]);
-	}
-
-	if (NULL != t[2]) {
-		g_object_unref (t[2]);
-	}
-
-	return fnval;
-}
-
-static gboolean
-generate_thumbnail (PhotoMetaReader * reader, VipsImage * in, VipsFormatClass * format,
-           void **thumb, size_t * size)
-{
-	g_assert (IS_PHOTO_META_READER (reader));
-	g_assert (NULL != in);
-	g_assert (NULL != format);
-	g_assert (NULL != thumb);
-	g_assert (NULL != size);
-
-	gint fd = -1;
-	GError *error = NULL;
-	VipsImage *out = NULL;
-	gchar *thumbpath = NULL;
-	gboolean got_thumb = FALSE;
-
-	if ((fd = g_file_open_tmp ("photo-meta-reader-vips-XXXXXX.jpg", &thumbpath, &error)) == -1) {
-		g_warning ("Unable to open temporary file for thumbnail: %s", error->message);
-		g_error_free (error);
-		goto _done;
-	}
-
-	if (!(out = vips_image_new_mode (thumbpath, "w"))) {
-		goto _done;
-	}
-
-	if (FALSE == generate_thumbnail2 (reader, in, out)) {
-		goto _done;
-	}
-
-	if (!g_file_get_contents (thumbpath, (gchar **) thumb, size, &error)) {
-		g_warning ("Error reading generated thumbnail at %s: %s",
-		            thumbpath,
-		            error->message);
-		g_error_free (error);
-	} else {
-		g_debug ("    Generated thumbnail.");
-		got_thumb = TRUE;
-	}
-
-_done:
-	if (fd >= 0) {
-		close (fd);
-	}
-
-	if (NULL != out) {
-		g_object_unref (out);
-	}
-
-	if (NULL != thumbpath) {
-		g_unlink (thumbpath);
-		g_free (thumbpath);
-	}
-
-	return got_thumb;
-}
-
-static gboolean
-format_is_jpeg (VipsFormatClass *format)
-{
-	g_assert (NULL != format);
-
-	return strcmp (VIPS_OBJECT_CLASS (format)->nickname, "jpeg") == 0;
-}
-
-static gboolean
-jpeg_is_multiscan (VipsImage *in)
-{
-	g_assert (NULL != in);
-
-	gboolean fnval = FALSE;
-
-	if (vips_image_get_typeof (in, "jpeg-multiscan")) {
-		int multiscan;
-		if (vips_image_get_int (in, "jpeg-multiscan", &multiscan)) {
-			g_warning ("Failed to determine if %s multiscan: %s",
-				    in->filename, vips_error_buffer ());
-			vips_error_clear ();
-			goto _done;
-		}
-
-		fnval = multiscan != 0;
-	}
-
-_done:
-	return fnval;
-}
-
-static gboolean
-jpeg_contains_thumbnail (VipsImage *in)
-{
-	g_assert (NULL != in);
-
-	return vips_image_get_typeof (in, "jpeg-thumbnail-data");
-}
-
-static VipsImage *
-extract_thumbnail (VipsImage *image)
-{
-	VipsImage *thumbnail  = NULL;
-	void  *thumbnail_data = NULL;
-	size_t thumbnail_size;
-
-	if (0 != vips_image_get_blob (image, "jpeg-thumbnail-data", &thumbnail_data, &thumbnail_size)) {
-		g_warning ("Failed to read EXIF thumbnail %s: %s", image->filename, vips_error_buffer ());
-		vips_error_clear ();
-		goto _done;
-	}
-
-	g_debug ("    Read EXIF thumbnail of size %lu.", thumbnail_size);
-
-	// This is expected to be small; open in memory.
-	thumbnail = vips_image_new_mode ("thumb", "t");
-	if (NULL == thumbnail) {
-		g_warning ("Could not open existing thumbnail: %s", vips_error_buffer ());
-		vips_error_clear ();
-		goto _done;
-	}
-
-	if (0 != vips_jpegload_buffer (thumbnail_data, thumbnail_size, &thumbnail, NULL)) {
-		g_warning ("Could not decode existing thumbnail: %s", vips_error_buffer ());
-		vips_error_clear ();
-		g_object_unref (thumbnail);
-		thumbnail = NULL;
-		goto _done;
-	}
-
-_done:
-	return thumbnail;
-}
-
-static int
-extract_or_generate_thumbnail (PhotoMetaReader *reader, VipsImage *in, VipsFormatClass *format,
-	   void **thumb, size_t *size)
-{
-	g_assert (IS_PHOTO_META_READER (reader));
-	g_assert (NULL != in);
-	g_assert (NULL != format);
-	g_assert (NULL != thumb);
-	g_assert (NULL != size);
-
-	gboolean got_thumb = FALSE;
-	VipsImage *in2 = NULL;
-	*size = 0;
-	*thumb = NULL;
-
-	if (format_is_jpeg (format)) {
-		/* JPEGs get special treatment. */
-		if (jpeg_contains_thumbnail (in)) {
-			in2 = extract_thumbnail (in);
-			if (NULL == in2) {
-				goto _done;
-			}
-		} else if (! jpeg_is_multiscan (in)) {
-			in2 = g_object_ref (in);
-		} else {
-			// libjpeg handles multiscan JPEGs differently.
-			// Avoid this because of memory use on small devices.
-			g_warning ("Will not try to thumbnail multiscan JPEG at %s", in->filename);
-			goto _done;
-		}
-	} else {
-		in2 = g_object_ref (in);
-	}
-
-	got_thumb = generate_thumbnail (reader, in2, format, thumb, size);
-
-_done:
-	if (NULL != in2) {
-		g_object_unref (in2);
-	}
-
-	return got_thumb;
+	return str; 
 }
 
 static gboolean
 photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const gchar *path)
 {
-	int x, y;
+	VipsObject *process;
 	VipsImage *im = NULL;
-	gchar *str;
+	const gchar *str;
+	VipsImage *thumb = NULL;
 	gchar *basename      = NULL;
 	gchar *uri           = NULL;
 	gchar *aspect_ratio  = NULL;
 	void *thumbnail_data = NULL;
 	GByteArray *thumbnail_array = NULL;
 	gboolean fnval = FALSE;
-	VipsFormatClass *format;
 	struct stat buf;
 	gsize thumbnail_size = 0;
 
+	/* Allocate all vips objects locally to this ... unref this to unref 
+	 * everything we created during this operation.
+	 */
+	process = (VipsObject *) vips_image_new (); 
+
 	g_debug ("Processing %s...", path);
 
-	format = vips_format_for_file (path);
-	if (NULL == format) {
-		g_warning ("Do not know how to handle %s", path);
-		goto _done;
-	}
-
-	// Might be big, decompress using disk.
-	im = vips_image_new_mode (path, "rd");
+	im = vips_image_new_from_file (path);
 	if (NULL == im) {
 		g_warning ("Could not open %s", path);
 		goto _done;
 	}
+	vips_object_local (process, im);
 
 	if (0 != stat (path, &buf)) {
 		g_warning ("Unable to determine size of %s", path);
@@ -422,7 +381,7 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 		g_object_set (record, "location", uri, NULL);
 	}
 
-	g_object_set (record, "format", VIPS_OBJECT_CLASS (format)->nickname, NULL);
+	g_object_set (record, "format", vips_foreign_find_load (path), NULL);
 	g_object_set (record, "pixel-height", im->Ysize, NULL);
 	g_object_set (record, "pixel-width", im->Xsize, NULL);
 	g_object_set (record, "comments", "", NULL);
@@ -440,46 +399,44 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 		g_object_set (record, "aspect-ratio", aspect_ratio, NULL);
 	}
 
-	if (vips_image_get_typeof (im, "exif-User Comment")) {
-		if (vips_image_get_string (im, "exif-User Comment", &str)) {
-			g_warning ("Failed to read comments from %s: %s", im->filename, vips_error_buffer ());
-			vips_error_clear ();
-		} else {
-			g_debug ("    Tag comments is %s.", str);
-			g_object_set (record, "comments", str, NULL);
-		}
+	if ((str = photo_meta_reader_vips_get_str (im, "exif-User Comment"))) {
+		g_debug ("    Tag comments is %s.", str);
+		g_object_set (record, "comments", str, NULL);
 	}
 
-	if (vips_image_get_typeof (im, "exif-Date and Time")) {
-		if (vips_image_get_string (im, "exif-Date and Time", &str)) {
-			g_warning ("Failed to read timestamp from %s: %s", im->filename, vips_error_buffer ());
-			vips_error_clear ();
+	if ((str = photo_meta_reader_vips_get_str (im, "exif-Date and Time"))) {
+		// Format is: "2007:10:05 00:20:26 (ASCII, 20 bytes)".
+		if (strlen (str) < 19) {
+			g_warning ("Bad timestamp string in %s: %s", im->filename, str);
 		} else {
-			// Format is: "2007:10:05 00:20:26 (ASCII, 20 bytes)".
-			if (strlen (str) < 19) {
-				g_warning ("Bad timestamp string in %s: %s", im->filename, str);
+			char buf[10];
+
+			vips_strncpy (buf, str, 10);
+			buf[4] = 0x00;	// Cut off year.
+			errno = 0;
+			long l = strtol (buf, NULL, 10);
+			if (errno) {
+				g_warning ("Bad timestamp string in %s: %s", im->filename, buf);
 			} else {
-				str[4] = 0x00;	// Cut off year.
-				errno = 0;
-				long l = strtol (str, NULL, 10);
-				if (errno) {
-					g_warning ("Bad timestamp string in %s: %s", im->filename, str);
-				} else {
-					// FIXME: Handle other than year!
-					long timestamp = (l - 1970) * 365 * 24 * 60 * 60;
-					g_debug ("    Tag creation date is %s.", str);
-					g_object_set (record, "creation-date", timestamp, NULL);
-				}
+				// FIXME: Handle other than year!
+				long timestamp = (l - 1970) * 365 * 24 * 60 * 60;
+				g_debug ("    Tag creation date is %s.", buf);
+				g_object_set (record, "creation-date", timestamp, NULL);
 			}
 		}
 	}
 
-	if (extract_or_generate_thumbnail (reader, im, format, &thumbnail_data, &thumbnail_size)) {
+	thumb = thumbnail_open (reader, process, path);
+	if (NULL == thumb) {
+		g_warning ("Could not open thumbnail for %s", path);
+		goto _done;
+	}
+	if (thumbnail_shrink (reader, process, thumb, &thumbnail_data, &thumbnail_size)) {
 		g_debug ("    Thumbnail is %ld bytes", thumbnail_size);
 		thumbnail_array = g_byte_array_sized_new (thumbnail_size);
 		if (NULL == thumbnail_array) {
 			// FIXME: I think the thumbnail prop. MUST be non-NULL;
-			//        if not, this could be cleaned up and made non-fatal.
+			//        if not, this could be cleaned up and non-fatal.
 			g_error ("Could not allocate memory for thumbnail array\n");
 		} else {
 			g_byte_array_append (thumbnail_array, thumbnail_data, thumbnail_size);
@@ -497,8 +454,8 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 	fnval = TRUE;
 
 _done:
-	if (NULL != im) {
-		g_object_unref (im);
+	if (NULL != process) {
+		g_object_unref (process);
 	}
 
 	if (NULL != basename) {
