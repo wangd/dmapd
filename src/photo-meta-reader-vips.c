@@ -235,16 +235,14 @@ thumbnail_open (PhotoMetaReader *reader, VipsObject *process, const char *filena
 		/* Try to read an embedded thumbnail. If we find one, use that instead. */
 		thumb = thumbnail_get_thumbnail (reader, im);
 		if (NULL != thumb) {
-			// FIXME: This causes Valgrind to complain on x86_64
-			// and a segfault on MIPS. Also get a "is not a GObject"
-			// error upon g_object_unref'ing the parent VIPS image.
-			// vips_object_local (process, thumb);
+			vips_object_local (process, thumb);
 
 			g_debug ("    Using %dx%d embedded JPEG thumbnail.", thumb->Xsize, thumb->Ysize); 
 
 			/* @thumb has not been fully decoded yet ... 
 			 * we must not close @im until we're done with @thumb.
 			 */
+			g_object_ref (im);
 			vips_object_local (VIPS_OBJECT (thumb), im);
 
 			im = thumb;
