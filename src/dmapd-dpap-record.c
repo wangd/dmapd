@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
 #include <string.h>
 
 #include "util.h"
@@ -25,10 +26,11 @@
 #include "photo-meta-reader.h"
 
 struct DmapdDPAPRecordPrivate {
+	char *location;
+	GByteArray *hash;
 	gint largefilesize;
 	gint creationdate;
 	gint rating;
-	char *location;
 	char *filename;
 	GByteArray *thumbnail;
 	const char *aspectratio;
@@ -40,10 +42,11 @@ struct DmapdDPAPRecordPrivate {
 
 enum {
 	PROP_0,
+	PROP_LOCATION,
+	PROP_HASH,
 	PROP_LARGE_FILESIZE,
 	PROP_CREATION_DATE,
 	PROP_RATING,
-	PROP_LOCATION,
 	PROP_FILENAME,
 	PROP_ASPECT_RATIO,
 	PROP_PIXEL_HEIGHT,
@@ -62,6 +65,16 @@ dmapd_dpap_record_set_property (GObject *object,
 	DmapdDPAPRecord *record = DMAPD_DPAP_RECORD (object);
 
 	switch (prop_id) {
+		case PROP_LOCATION:
+			g_free (record->priv->location);
+			record->priv->location = g_value_dup_string (value);
+			break;
+		case PROP_HASH:
+			if (record->priv->hash) {
+				g_byte_array_unref (record->priv->hash);
+			}
+			record->priv->hash = g_byte_array_ref (g_value_get_pointer (value));
+			break;
 		case PROP_LARGE_FILESIZE:
 			record->priv->largefilesize = g_value_get_int (value);
 			break;
@@ -70,10 +83,6 @@ dmapd_dpap_record_set_property (GObject *object,
 			break;
 		case PROP_RATING:
 			record->priv->rating = g_value_get_int (value);
-			break;
-		case PROP_LOCATION:
-			g_free (record->priv->location);
-			record->priv->location = g_value_dup_string (value);
 			break;
 		case PROP_FILENAME:
 			g_free (record->priv->filename);
@@ -119,6 +128,12 @@ dmapd_dpap_record_get_property (GObject *object,
 	DmapdDPAPRecord *record = DMAPD_DPAP_RECORD (object);
 
 	switch (prop_id) {
+		case PROP_LOCATION:
+			g_value_set_static_string (value, record->priv->location);
+			break;
+		case PROP_HASH:
+			g_value_set_pointer (value, record->priv->hash);
+			break;
 		case PROP_LARGE_FILESIZE:
 			g_value_set_int (value, record->priv->largefilesize);
 			break;
@@ -127,9 +142,6 @@ dmapd_dpap_record_get_property (GObject *object,
 			break;
 		case PROP_RATING:
 			g_value_set_int (value, record->priv->rating);
-			break;
-		case PROP_LOCATION:
-			g_value_set_static_string (value, record->priv->location);
 			break;
 		case PROP_FILENAME:
 			g_value_set_static_string (value, record->priv->filename);
@@ -184,21 +196,26 @@ dmapd_dpap_record_to_blob (DMAPRecord *record)
 
 	/* NOTE: do not store ID in the blob. */
 
+	blob_add_string (blob, VERSION);
+	blob_add_string (blob, priv->location);
+
+	blob_add_atomic (blob, (const guint8 *) &(priv->hash->len), sizeof (priv->hash->len));
+	g_byte_array_append (blob, priv->hash->data, priv->hash->len);
+
 	blob_add_atomic (blob, (const guint8 *) &(priv->largefilesize),
 			 sizeof (priv->largefilesize));
 	blob_add_atomic (blob, (const guint8 *) &(priv->creationdate),
 			 sizeof (priv->creationdate));
 	blob_add_atomic (blob, (const guint8 *) &(priv->rating),
 			 sizeof (priv->rating));
-        blob_add_string (blob, priv->location);
         blob_add_string (blob, priv->filename);
 	if (priv->thumbnail) {
 		blob_add_atomic (blob, (const guint8 *) &(priv->thumbnail->len),
 				 sizeof (priv->thumbnail->len));
 
 		g_byte_array_append (blob,
-				     DMAPD_DPAP_RECORD (record)->priv->thumbnail->data,
-				     DMAPD_DPAP_RECORD (record)->priv->thumbnail->len);
+				     priv->thumbnail->data,
+				     priv->thumbnail->len);
 	} else {
 		gsize zero = 0;
 		blob_add_atomic (blob, (const guint8 *) &zero,
@@ -216,57 +233,155 @@ dmapd_dpap_record_to_blob (DMAPRecord *record)
 	return blob;
 }
 
-DMAPRecord *
+static gboolean
 dmapd_dpap_record_set_from_blob (DMAPRecord *_record, GByteArray *blob)
 {
-	guint size;
+	gboolean fnval = FALSE;
+	DmapdDPAPRecord *record = NULL;
+	GFile *file = NULL;
+	GFileInputStream *stream = NULL;
+	GError *error = NULL;
 	guint8 *ptr = blob->data;
-	DmapdDPAPRecord *record = DMAPD_DPAP_RECORD (_record);
 
-	g_object_set (record, "large-filesize", *((gint *) ptr), NULL);
-	ptr += sizeof (record->priv->largefilesize);
+	char *version;
+	guint size;
+	char *location;
+	GByteArray *hash = NULL;
+	guchar hash2[DMAP_HASH_SIZE];
+	gint large_filesize;
+	gint creation_date;
+	gint rating;
+	char *filename;
+	GByteArray *thumbnail = NULL;
+	char *aspect_ratio;
+	gint pixel_height;
+	gint pixel_width;
+	char *format;
+	char *comments;
 
-	g_object_set (record, "creation-date", *((gint *) ptr), NULL);
-	ptr += sizeof (record->priv->creationdate);
+	version = (char *) ptr;
+	ptr += strlen (version) + 1;
+	if (strcmp (version, VERSION)) {
+		g_warning ("Cache written by wrong dmapd version");
+		goto _done;
+	}
 
-	g_object_set (record, "rating", *((gint *) ptr), NULL);
-	ptr += sizeof (record->priv->rating);
-
-	g_object_set (record, "location", (char *) ptr, NULL);
+	location = (char *) ptr;
 	ptr += strlen ((char *) ptr) + 1;
 
-	g_object_set (record, "filename", (char *) ptr, NULL);
+	size = *((guint *) ptr);
+	if (DMAP_HASH_SIZE != size) {
+		g_warning ("Improper hash size in cache\n");
+		goto _done;
+	}
+	ptr += sizeof (size);
+
+	hash = g_byte_array_sized_new (size);
+	if (NULL == hash) {
+                g_warning ("Error allocating array for hash\n");
+                goto _done;
+        }
+	g_byte_array_append (hash, ptr, size);
+	ptr += size;
+
+	large_filesize = *(gint *) ptr;
+	ptr += sizeof (record->priv->largefilesize);
+
+	creation_date = *(gint *) ptr;
+	ptr += sizeof (record->priv->creationdate);
+
+	rating = *(gint *) ptr;
+	ptr += sizeof (record->priv->rating);
+
+	filename = (char *) ptr;
 	ptr += strlen ((char *) ptr) + 1;
 
 	size = *((guint *) ptr);
 	ptr += sizeof (size);
 
 	if (size) {
-		GByteArray *thumbnail_array = g_byte_array_sized_new (size);
-		g_byte_array_append (thumbnail_array, ptr, size);
-		g_object_set (record, "thumbnail", thumbnail_array, NULL);
-		g_byte_array_unref (thumbnail_array);
+		thumbnail = g_byte_array_sized_new (size);
+		if (NULL == hash) {
+			g_warning ("Error allocating array for thumbnail\n");
+			goto _done;
+		}
+		g_byte_array_append (thumbnail, ptr, size);
 		ptr += size;
+	}
+
+	aspect_ratio = (char *) ptr;
+	ptr += strlen ((char *) ptr) + 1;
+
+	pixel_height = *(gint *) ptr;
+	ptr += sizeof (record->priv->height);
+
+	pixel_width = *(gint *) ptr;
+	ptr += sizeof (record->priv->width);
+
+	format = (char *) ptr;
+	ptr += strlen ((char *) ptr) + 1;
+
+	comments = (char *) ptr;
+	ptr += strlen ((char *) ptr) + 1;
+
+	file = g_file_new_for_uri (location);
+        if (NULL == location) {
+                g_warning ("Could not open %s\n", location);
+                goto _done;
+        }
+
+        stream = g_file_read (file, NULL, &error);
+        if (NULL == stream) {
+                g_warning ("Could not read %s: %s\n", location, error->message);
+                goto _done;
+        }
+
+        if (! dmapd_util_hash_file (location, hash2)
+         || memcmp (hash->data, hash2, DMAP_HASH_SIZE)) {
+                g_warning ("Media file has changed since being cached\n");
+                goto _done;
+        }
+
+	record = DMAPD_DPAP_RECORD (_record);
+
+	g_object_set (record, "location", location,
+	                      "hash", hash,
+	                      "large-filesize", large_filesize,
+	                      "creation-date", creation_date,
+	                      "rating", rating,
+	                      "filename", filename,
+	                      "aspect-ratio", aspect_ratio,
+	                      "pixel-height", pixel_height,
+	                      "pixel-width", pixel_width,
+	                      "format", format,
+	                      "comments", comments, NULL);
+
+	if (NULL != thumbnail) {
+		g_object_set (record, "thumbnail", thumbnail, NULL);
 	} else {
 		g_object_set (record, "thumbnail",  g_byte_array_sized_new (0), NULL);
 	}
 
-	g_object_set (record, "aspect-ratio", (char *) ptr, NULL);
-	ptr += strlen ((char *) ptr) + 1;
+	fnval = TRUE;	
 
-	g_object_set (record, "pixel-height", *((gint *) ptr), NULL);
-	ptr += sizeof (record->priv->height);
+_done:
+	if (NULL != file) {
+                g_object_unref (file);
+        }
 
-	g_object_set (record, "pixel-width", *((gint *) ptr), NULL);
-	ptr += sizeof (record->priv->width);
+        if (NULL != stream) {
+                g_object_unref (stream);
+        }
 
-	g_object_set (record, "format", (char *) ptr, NULL);
-	ptr += strlen ((char *) ptr) + 1;
+	if (NULL != hash) {
+		g_byte_array_unref (hash);
+	}
 
-	g_object_set (record, "comments", (char *) ptr, NULL);
-	ptr += strlen ((char *) ptr) + 1;
+	if (NULL != thumbnail) {
+		g_byte_array_unref (thumbnail);
+	}
 
-	return DMAP_RECORD (record);
+	return fnval;
 }
 
 static void dmapd_dpap_record_init (DmapdDPAPRecord *record)
@@ -286,10 +401,11 @@ static void dmapd_dpap_record_class_init (DmapdDPAPRecordClass *klass)
 	gobject_class->get_property = dmapd_dpap_record_get_property;
 	gobject_class->finalize = dmapd_dpap_record_finalize;
 
+	g_object_class_override_property (gobject_class, PROP_LOCATION, "location");
+	g_object_class_override_property (gobject_class, PROP_HASH, "hash");
 	g_object_class_override_property (gobject_class, PROP_LARGE_FILESIZE, "large-filesize");
 	g_object_class_override_property (gobject_class, PROP_CREATION_DATE, "creation-date");
 	g_object_class_override_property (gobject_class, PROP_RATING, "rating");
-	g_object_class_override_property (gobject_class, PROP_LOCATION, "location");
 	g_object_class_override_property (gobject_class, PROP_FILENAME, "filename");
 	g_object_class_override_property (gobject_class, PROP_ASPECT_RATIO, "aspect-ratio");
 	g_object_class_override_property (gobject_class, PROP_PIXEL_HEIGHT, "pixel-height");
@@ -346,19 +462,64 @@ dmapd_dpap_record_finalize (GObject *object)
 
 DmapdDPAPRecord *dmapd_dpap_record_new (const char *path, gpointer reader)
 {
-	DmapdDPAPRecord *record;
+	DmapdDPAPRecord *record = NULL;
+	guchar hash_buf[DMAP_HASH_SIZE];
+	char *location = NULL;
+	GByteArray *hash = NULL;
 
-	record = DMAPD_DPAP_RECORD (g_object_new (TYPE_DMAPD_DPAP_RECORD, NULL));
+	if (path) {
+		location = g_filename_to_uri (path, NULL, NULL);
+                if (NULL == location) {
+                        g_warning ("Error converting %s to URI\n", path);
+                        goto _done;
+                }
+
+		hash = g_byte_array_sized_new (DMAP_HASH_SIZE);
+                if (NULL == hash) {
+                        g_warning ("Error allocating memory for record's hash field\n");
+                        goto _done;
+                }
+
+                if (! dmapd_util_hash_file (location, hash_buf)) {
+                        g_warning ("Unable to hash %s\n", location);
+                        goto _done;
+                }
+
+		g_byte_array_append (hash, hash_buf, DMAP_HASH_SIZE);
+
+		record = DMAPD_DPAP_RECORD (g_object_new (TYPE_DMAPD_DPAP_RECORD, NULL));
+		if (NULL == record) {
+                        g_warning ("Error allocating memory for record\n");
+                        goto _done;
+                }
+
+		g_object_set (record, "location", location,
+                                      "hash",     hash, NULL);
+
+		if (! photo_meta_reader_read (PHOTO_META_READER (reader), DPAP_RECORD (record), path)) {
+			g_object_unref (record);
+			record = NULL;
+			goto _done;
+		}
+	} else {
+		record = DMAPD_DPAP_RECORD (g_object_new (TYPE_DMAPD_DPAP_RECORD, NULL));
+		if (NULL == record) {
+                        g_warning ("Error allocating memory for record\n");
+                        goto _done;
+                }
+	}
 
 	/* FIXME: where can this go (what is default value for pointer props?) */
 	record->priv->thumbnail = NULL;
 
-	if (path) {
-		if (! photo_meta_reader_read (PHOTO_META_READER (reader), DPAP_RECORD (record), path)) {
-			g_object_unref (record);
-			record = NULL;
-		}
-	}
+_done:
+	if (NULL != location) {
+                g_free (location);
+        }
+
+        if (NULL != hash) {
+                g_byte_array_unref (hash);
+        }
 
 	return record;
 }

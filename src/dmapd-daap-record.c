@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,8 +31,9 @@
 static const char *unknown = "Unknown";
 
 struct DmapdDAAPRecordPrivate {
-	guint64 filesize;
 	char *location;
+	GByteArray *hash;
+	guint64 filesize;
 	const char *format;	 	/* Format, possibly after transcoding. */
 	gint mediakind;
 	char *title;
@@ -54,6 +56,7 @@ struct DmapdDAAPRecordPrivate {
 enum {
 	PROP_0,
 	PROP_LOCATION,
+	PROP_HASH,
 	PROP_TITLE,
 	PROP_RATING,
 	PROP_FILESIZE,
@@ -88,6 +91,12 @@ dmapd_daap_record_set_property (GObject *object,
 			g_free (record->priv->location);
 			record->priv->location = g_value_dup_string (value);
 			break;
+		case PROP_HASH:
+                        if (record->priv->hash) {
+                                g_byte_array_unref (record->priv->hash);
+                        }
+                        record->priv->hash = g_byte_array_ref (g_value_get_pointer (value));
+                        break;
 		case PROP_TITLE:
 			g_free (record->priv->title);
 			record->priv->title = g_value_dup_string (value);
@@ -171,6 +180,9 @@ dmapd_daap_record_get_property (GObject *object,
 		case PROP_LOCATION:
 			g_value_set_static_string (value, record->priv->location);
 			break;
+		case PROP_HASH:
+                        g_value_set_pointer (value, record->priv->hash);
+                        break;
 		case PROP_TITLE:
 			g_value_set_static_string (value, record->priv->title);
 			break;
@@ -267,17 +279,23 @@ dmapd_daap_record_to_blob (DMAPRecord *record)
 
 	/* NOTE: do not store ID in the blob. */
 
-	blob_add_atomic   (blob, (const guint8 *) &(priv->filesize),
-			   sizeof (priv->filesize));
-
 	g_assert (priv->location);
+	g_assert (priv->hash);
 	g_assert (priv->format);
 	g_assert (priv->title);
 	g_assert (priv->album);
 	g_assert (priv->artist);
 	g_assert (priv->genre);
 
+	blob_add_string (blob, VERSION);
 	blob_add_string (blob, priv->location);
+
+	blob_add_atomic (blob, (const guint8 *) &(priv->hash->len), sizeof (priv->hash->len));
+	g_byte_array_append (blob, priv->hash->data, priv->hash->len);
+
+	blob_add_atomic   (blob, (const guint8 *) &(priv->filesize),
+			   sizeof (priv->filesize));
+
 	blob_add_string (blob, priv->format);
 	blob_add_string (blob, priv->title);
 	blob_add_string (blob, priv->album);
@@ -308,64 +326,166 @@ dmapd_daap_record_to_blob (DMAPRecord *record)
 	return blob;
 }
 
-static DMAPRecord *
+static gboolean
 dmapd_daap_record_set_from_blob (DMAPRecord *_record, GByteArray *blob)
 {
+	gboolean fnval = FALSE;
+	DmapdDAAPRecord *record = NULL;
+	GFile *file = NULL;
+	GFileInputStream *stream = NULL;
+	GError *error = NULL;
 	guint8 *ptr = blob->data;
-	DmapdDAAPRecord *record = DMAPD_DAAP_RECORD (_record);
 
-	g_object_set (record, "filesize", *((guint64 *) ptr), NULL);
+	char *version;
+	guint size;
+	guint64 filesize;
+	char *location;
+	char *format;
+	GByteArray *hash = NULL;
+	guchar hash2[DMAP_HASH_SIZE];
+	char *title;
+	char *songalbum;
+	char *songartist;
+	char *songgenre;
+	gboolean has_video;
+	gint mediakind;
+	gint rating;
+	gint32 duration;
+	gint32 track;
+	gint32 year;
+	gint32 firstseen;
+	gint32 mtime;
+	gint32 disc;
+	gint32 bitrate;
+
+	version = (char *) ptr;
+	ptr += strlen (version) + 1;
+	if (strcmp (version, VERSION)) {
+		g_warning ("Cache written by wrong dmapd version");
+		goto _done;
+	}
+
+	location = (char *) ptr;
+        ptr += strlen (location) + 1;
+
+	size = *((guint *) ptr);
+	if (DMAP_HASH_SIZE != size) {
+                g_warning ("Improper hash size in cache\n");
+                goto _done;
+        }
+        ptr += sizeof (size);
+
+        hash = g_byte_array_sized_new (size);
+	if (NULL == hash) {
+		g_warning ("Error allocating array for hash\n");
+		goto _done;
+	}
+        g_byte_array_append (hash, ptr, size);
+        ptr += size;
+
+	filesize = *(guint64 *) ptr;
         ptr += sizeof (record->priv->filesize);
 
-	g_object_set (record, "location", (char *) ptr, NULL);
+	format = (char *) ptr;
         ptr += strlen ((char *) ptr) + 1;
 
-	g_object_set (record, "format", (char *) ptr, NULL);
+	title = (char *) ptr;
         ptr += strlen ((char *) ptr) + 1;
 
-	g_object_set (record, "title", (char *) ptr, NULL);
+	songalbum = (char *) ptr;
         ptr += strlen ((char *) ptr) + 1;
 
-	g_object_set (record, "songalbum", (char *) ptr, NULL);
+	songartist = (char *) ptr;
         ptr += strlen ((char *) ptr) + 1;
 
-	g_object_set (record, "songartist", (char *) ptr, NULL);
+	songgenre = (char *) ptr;
         ptr += strlen ((char *) ptr) + 1;
 
-	g_object_set (record, "songgenre", (char *) ptr, NULL);
-        ptr += strlen ((char *) ptr) + 1;
-
-	g_object_set (record, "has-video", *((gboolean *) ptr), NULL);
+	has_video = *(gint *) ptr;
         ptr += sizeof (record->priv->has_video);
 
-	g_object_set (record, "mediakind", *((gint *) ptr), NULL);
+	mediakind = *(gint *) ptr;
 	ptr += sizeof (record->priv->mediakind);
 
-	g_object_set (record, "rating", *((gint *) ptr), NULL);
+	rating = *(gint *) ptr;
         ptr += sizeof (record->priv->rating);
 
-	g_object_set (record, "duration", *((gint32 *) ptr), NULL);
+	duration = *(gint32 *) ptr;
         ptr += sizeof (record->priv->duration );
 
-	g_object_set (record, "track", *((gint32 *) ptr), NULL);
+	track = *(gint32 *) ptr;
         ptr += sizeof (record->priv->track);
 
-	g_object_set (record, "year", *((gint32 *) ptr), NULL);
+	year = *(gint32 *) ptr;
         ptr += sizeof (record->priv->year);
 
-	g_object_set (record, "firstseen", *((gint32 *) ptr), NULL);
+	firstseen = *(gint32 *) ptr;
         ptr += sizeof (record->priv->firstseen);
 
-	g_object_set (record, "mtime", *((gint32 *) ptr), NULL);
+	mtime = *(gint32 *) ptr;
         ptr += sizeof (record->priv->mtime);
 
-	g_object_set (record, "disc", *((gint32 *) ptr), NULL);
+	disc = *(gint32 *) ptr;
         ptr += sizeof (record->priv->disc);
 
-	g_object_set (record, "bitrate", *((gint32 *) ptr), NULL);
+	bitrate = *(gint32 *) ptr;
         ptr += sizeof (record->priv->bitrate);
 
-	return DMAP_RECORD (record);
+	file = g_file_new_for_uri (location);
+        if (NULL == location) {
+                g_warning ("Could not open %s\n", location);
+                goto _done;
+        }	
+
+	stream = g_file_read (file, NULL, &error);
+	if (NULL == stream) {
+                g_warning ("Could not read %s: %s\n", location, error->message);
+                goto _done;
+	}
+
+	if (! dmapd_util_hash_file (location, hash2)
+         || memcmp (hash->data, hash2, DMAP_HASH_SIZE)) {
+		g_warning ("Media file has changed since being cached\n");
+		goto _done;
+        }
+
+	record = DMAPD_DAAP_RECORD (_record);
+
+	g_object_set (record, "year", year,
+	                      "filesize", filesize,
+	                      "location", location,
+                              "hash", hash,
+	                      "format", format,
+	                      "title", title,
+	                      "songalbum", songalbum,
+	                      "songartist", songartist,
+	                      "songgenre", songgenre,
+	                      "has-video", has_video,
+	                      "mediakind", mediakind,
+	                      "rating", rating,
+	                      "duration", duration,
+	                      "track", track,
+	                      "firstseen", firstseen,
+	                      "mtime", mtime,
+	                      "disc", disc,
+	                      "bitrate", bitrate, NULL);
+
+	fnval = TRUE;
+
+_done:
+	if (NULL != file) {
+		g_object_unref (file);
+	}
+
+	if (NULL != stream) {
+		g_object_unref (stream);
+	}
+
+	if (NULL != hash) {
+		g_byte_array_unref (hash);
+	}
+
+	return fnval;
 }
 
 static void dmapd_daap_record_init (DmapdDAAPRecord *record)
@@ -386,6 +506,7 @@ static void dmapd_daap_record_class_init (DmapdDAAPRecordClass *klass)
 	gobject_class->finalize     = dmapd_daap_record_finalize;	
 
 	g_object_class_override_property (gobject_class, PROP_LOCATION, "location");
+	g_object_class_override_property (gobject_class, PROP_HASH, "hash");
 	g_object_class_override_property (gobject_class, PROP_TITLE, "title");
 	g_object_class_override_property (gobject_class, PROP_ALBUM, "songalbum");
 	g_object_class_override_property (gobject_class, PROP_SORT_ALBUM, "sort-album");
@@ -452,12 +573,44 @@ dmapd_daap_record_finalize (GObject *object)
 DmapdDAAPRecord *dmapd_daap_record_new (const char *path, AVMetaReader *reader)
 {
 	DmapdDAAPRecord *record = NULL;
+	guchar hash_buf[DMAP_HASH_SIZE];
 	struct stat buf;
-	char *title, *location;
-
-	record = DMAPD_DAAP_RECORD (g_object_new (TYPE_DMAPD_DAAP_RECORD, NULL));
+	char *title = NULL;
+	char *location = NULL;
+	GByteArray *hash = NULL;
 
 	if (path) {
+		location = g_filename_to_uri (path, NULL, NULL);
+		if (NULL == location) {
+			g_warning ("Error converting %s to URI\n", path);
+			goto _done;
+		}
+
+		title = g_path_get_basename (path);
+		if (NULL == title) {
+			g_warning ("Error extracting filename from %s\n", path);
+			goto _done;
+		}
+
+		hash = g_byte_array_sized_new (DMAP_HASH_SIZE);
+		if (NULL == hash) {
+			g_warning ("Error allocating memory for record's hash field\n");
+			goto _done;
+		}
+
+		if (! dmapd_util_hash_file (location, hash_buf)) {
+			g_warning ("Unable to hash %s\n", location);
+			goto _done;
+		}
+
+		g_byte_array_append (hash, hash_buf, DMAP_HASH_SIZE);
+
+		record = DMAPD_DAAP_RECORD (g_object_new (TYPE_DMAPD_DAAP_RECORD, NULL));
+		if (NULL == record) {
+			g_warning ("Error allocating memory for record\n");
+			goto _done;
+		}
+
 		if (stat (path, &buf) == -1) {
 			g_warning ("Unable to determine size of %s", path);
 		} else {
@@ -469,27 +622,46 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, AVMetaReader *reader)
 				      NULL);
 		}
 
-		location = g_filename_to_uri (path, NULL, NULL);
-		title = g_path_get_basename (path);
+		g_object_set (record, "location",    location,
+		                      "hash",        hash,
+		                      "title",       title,
+		                      "songartist",  unknown,
+		                      "songalbum",   unknown,
+		                      "songgenre",   unknown,
+		                      "format",      unknown,
+		                      "mediakind",   DMAP_MEDIA_KIND_MUSIC,
+		                      "year",        1985,
+		                      "disc",        1, NULL);
 
-		g_object_set (record, "location",    location, NULL);
-		g_object_set (record, "title",       title,    NULL);
-		g_object_set (record, "songartist",  unknown,  NULL);
-		g_object_set (record, "songalbum",   unknown,  NULL);
-		g_object_set (record, "songgenre",   unknown,  NULL);
-		g_object_set (record, "format",      unknown,  NULL);
-		g_object_set (record, "mediakind",   DMAP_MEDIA_KIND_MUSIC, NULL);
-		g_object_set (record, "year",        1985, NULL);
-		g_object_set (record, "disc",        1, NULL);
-
-		g_free (location);
-		g_free (title);
-
-		av_meta_reader_read (AV_META_READER (reader), DAAP_RECORD (record), path);
+		if (! av_meta_reader_read (AV_META_READER (reader), DAAP_RECORD (record), path)) {
+			g_object_unref (record);
+			record = NULL;
+			goto _done;
+		}
 
 		record->priv->rating = 5;	/* FIXME */
 		record->priv->firstseen = 1;	/* FIXME */
 		record->priv->bitrate = 128;	/* FIXME, from codec decoder */
+	} else {
+		record = DMAPD_DAAP_RECORD (g_object_new (TYPE_DMAPD_DAAP_RECORD, NULL));
+		if (NULL == record) {
+			g_warning ("Error allocating memory for record\n");
+			goto _done;
+		}
+	}
+
+_done:
+
+	if (NULL != location) {
+		g_free (location);
+	}
+
+	if (NULL != title) {
+		g_free (title);
+	}
+
+	if (NULL != hash) {
+		g_byte_array_unref (hash);
 	}
 
 	return record;

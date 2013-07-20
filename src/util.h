@@ -23,6 +23,7 @@
 #ifndef __DMAPD_UTIL
 #define __DMAPD_UTIL
 
+#include <libdmapsharing/dmap.h>
 #include <glib.h>
 #include <glib-object.h>
 
@@ -57,5 +58,9 @@ GObject *object_from_module (GType type,
                              ...);
 
 gchar *cache_path (cache_type_t type, const gchar *db_dir, const gchar *imagepath);
+
+void cache_store (const gchar *db_dir, const gchar *uri, GByteArray *blob);
+
+gboolean dmapd_util_hash_file (const gchar *uri, unsigned char hash[DMAP_HASH_SIZE]);
 
 #endif

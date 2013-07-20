@@ -20,10 +20,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <libdmapsharing/dmap.h>
 
 #include "util.h"
 #include "dmapd-module.h"
@@ -243,19 +243,71 @@ object_from_module (GType type, const gchar *module_dir, const gchar *module_nam
 	return fnval;
 }
 
+gboolean
+dmapd_util_hash_file (const gchar *uri, unsigned char hash[DMAP_HASH_SIZE])
+{
+	g_assert (NULL != uri);
+	g_assert (NULL != hash);
+
+	gsize bytes_read = 0;
+	gboolean fnval = FALSE;
+	GError *error = NULL;
+	GFile *file = NULL;
+	GFileInputStream *stream = NULL;
+	unsigned char buffer[BUFSIZ];
+	DMAPHashContext context;
+
+	file = g_file_new_for_uri (uri);
+	if (NULL == file) {
+		g_warning ("Could not open %s\n", uri);
+		goto _done;
+	}
+
+	stream = g_file_read (file, NULL, &error);
+	if (error != NULL) {
+		g_warning ("Could not read %s: %s\n", uri, error->message);
+		goto _done;
+	}
+
+	dmap_hash_progressive_init (&context);
+
+	while (0 < (bytes_read = g_input_stream_read (G_INPUT_STREAM (stream), buffer, BUFSIZ, NULL, &error))) {
+		dmap_hash_progressive_update (&context, buffer, bytes_read);
+	}	
+
+	if (NULL != error) {
+		g_warning ("Could not read %s: %s\n", uri, error->message);
+		goto _done;
+	}
+
+	dmap_hash_progressive_final (&context, hash);
+
+	fnval = TRUE;
+
+_done:
+	if (NULL != file) {
+		g_object_unref (file);
+	}
+
+	if (NULL != stream) {
+		g_object_unref (stream);
+	}
+
+	return fnval;
+}
+
 gchar *
-cache_path (cache_type_t type, const gchar *db_dir, const gchar *imagepath)
+cache_path (cache_type_t type, const gchar *db_dir, const gchar *uri)
 {
         gchar *cachepath = NULL;
-        guchar hash[33] = { 0 };
+	guchar raw_hash[DMAP_HASH_SIZE] = { 0 };
+        guchar hash[DMAP_HASH_SIZE * 2 + 1] = { 0 };
 	
-	/* FIXME: this should really be based on the contents of the file,
-	 * not the filename.
-	 */
-	gchar *filename = strrchr (imagepath, '/') + 1;
-	g_assert (filename);
+	if (! dmapd_util_hash_file (uri, raw_hash)) {
+		goto _done;
+	}
 
-        dmap_hash_generate (1, (const guchar*) filename, 2, hash, 0);
+	dmap_hash_progressive_to_string (raw_hash, hash);
 
 	switch (type) {
 	case CACHE_TYPE_RECORD:
@@ -272,5 +324,43 @@ cache_path (cache_type_t type, const gchar *db_dir, const gchar *imagepath)
 		g_error ("Bad cache path type");
 	}
 
+_done:
         return cachepath;
+}
+
+void
+cache_store (const gchar *db_dir, const gchar *uri, GByteArray *blob)
+{
+        struct stat st;
+        gchar *cachepath = NULL;
+        GError *error = NULL;
+        /* NOTE: g_stat seemed broken; would corrupt GError *error. */
+        if (stat (db_dir, &st) != 0) {
+                g_warning ("cache directory %s does not exist, will not cache", db_dir);
+		goto _done;
+        }
+        if (! (st.st_mode & S_IFDIR)) {
+                g_warning ("%s is not a directory, will not cache", db_dir);
+		goto _done;
+        }
+        cachepath = cache_path (CACHE_TYPE_RECORD, db_dir, uri);
+	if (NULL == cachepath) {
+		goto _done;
+	}
+
+        g_file_set_contents (cachepath,
+			    (gchar *) blob->data,
+			     blob->len,
+			     &error);
+        if (error != NULL) {
+                g_warning ("Error writing %s: %s", cachepath, error->message);
+		goto _done;
+        }
+
+_done:
+	if (NULL != cachepath) {
+		g_free (cachepath);
+	}
+
+	return;
 }

@@ -151,8 +151,12 @@ load_cached_records (DMAPDb *db, const gchar *db_dir, DMAPRecordFactory *factory
 					if (blob) {
 						g_debug ("Adding cache: %s", path);
 						DMAPRecord *record = dmap_record_factory_create (factory, NULL);
-						dmap_record_set_from_blob (record, blob);
-						dmap_db_add (DMAP_DB (db), record);
+						if (dmap_record_set_from_blob (record, blob)) {
+							dmap_db_add (DMAP_DB (db), record);
+						} else {
+							g_warning ("Removing stale cache entry %s\n", path);
+							g_unlink (path);
+						}
 						g_byte_array_free (blob, TRUE);
 						g_object_unref (record);
 					}
@@ -172,50 +176,35 @@ dmapd_dmap_db_ghashtable_add_with_id (DMAPDb *db, DMAPRecord *record, guint id)
 	return id;
 }
 
-static void
-cache_store (const gchar *db_dir, const gchar *imagepath, GByteArray *blob)
-{
-        struct stat st;
-        gchar *cachepath;
-        GError *error = NULL;
-        /* NOTE: g_stat seemed broken; would corrupt GError *error. */
-        if (stat (db_dir, &st) != 0) {
-                g_warning ("cache directory %s does not exist, will not cache", db_dir);
-                return;
-        }
-        if (! (st.st_mode & S_IFDIR)) {
-                g_warning ("%s is not a directory, will not cache", db_dir);
-                return;
-        }
-        cachepath = cache_path (CACHE_TYPE_RECORD, db_dir, imagepath);
-        g_file_set_contents (cachepath,
-			    (gchar *) blob->data,
-			     blob->len,
-			     &error);
-        if (error != NULL) {
-                g_warning ("Error writing %s", cachepath);
-        }
-
-        g_free (cachepath);
-}
-
 static guint
 dmapd_dmap_db_ghashtable_add (DMAPDb *db, DMAPRecord *record)
 {
-	gchar *db_dir = NULL;
-	GByteArray *blob;
-	gchar *location;
+	gchar *db_dir    = NULL;
+	GByteArray *blob = NULL;
+	gchar *location  = NULL;;
 
 	g_object_ref (record);
 
-	blob = dmap_record_to_blob (record);
 	g_object_get (record, "location", &location, NULL);
 	g_object_get (db, "db-dir", &db_dir, NULL);
-	if (db_dir != NULL)
+
+	if (db_dir != NULL) {
+		blob = dmap_record_to_blob (record);
 		cache_store (db_dir, location, blob);
-	g_free (location);
-	g_free (db_dir);
-	g_byte_array_free (blob, TRUE);
+	}
+
+_done:
+	if (NULL != location) {
+		g_free (location);
+	}
+
+	if (NULL != db_dir) {
+		g_free (db_dir);
+	}
+
+	if (NULL != blob) {
+		g_byte_array_unref (blob);
+	}
 
 	return dmapd_dmap_db_ghashtable_add_with_id (db, record, nextid--);
 }

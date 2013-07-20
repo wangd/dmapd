@@ -406,7 +406,6 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 	VipsImage *thumb            = NULL;
 	VipsFormatClass *format     = NULL;
 	gchar *basename             = NULL;
-	gchar *uri                  = NULL;
 	gchar *aspect_ratio         = NULL;
 	void *thumbnail_data        = NULL;
 	GByteArray *thumbnail_array = NULL;
@@ -447,14 +446,6 @@ photo_meta_reader_vips_read (PhotoMetaReader *reader, DPAPRecord *record, const 
 	} else {
 		g_debug ("    Tag filename is %s.", basename);
 		g_object_set (record, "filename", basename, NULL);
-	}
-
-	uri = g_filename_to_uri (path, NULL, NULL);
-	if (NULL == uri) {
-		g_warning ("Unable to determine URI for %s\n", path);
-	} else {
-		g_debug ("    Tag location is %s.", uri);
-		g_object_set (record, "location", uri, NULL);
 	}
 
 	g_object_set (record, "format", VIPS_OBJECT_CLASS (format)->nickname, NULL);
@@ -537,10 +528,6 @@ _done:
 
 	if (NULL != basename) {
 		g_free (basename);
-	}	
-
-	if (NULL != uri) {
-		g_free (uri);
 	}	
 
 	if (NULL != aspect_ratio) {

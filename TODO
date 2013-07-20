@@ -90,10 +90,6 @@ int main (int argc, char *argv[])
 	printf ("DONE\n");
 }
 
-Mike: reconcile db with filesystem on dmapd start, store hash (include
-dmapd version) to determine if up to date?  Fix handling of bad blob data
-(DmapdD[AP]APRecord).
-
 Mike: split DB/cache directories; update packages?
 
 Mike: temporary, thumbnail files remain

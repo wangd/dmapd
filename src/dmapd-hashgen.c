@@ -28,7 +28,8 @@
 
 int main (int argc, char *argv[])
 {
-	guchar hash[33] = { 0 };
+	guchar raw_hash[DMAP_HASH_SIZE] = { 0 };
+	guchar hash[DMAP_HASH_SIZE * 2 + 1] = { 0 };
 	gchar *absolute_path = NULL;
 
 	if (argc != 2) {
@@ -57,8 +58,13 @@ int main (int argc, char *argv[])
 	}
 
 	gchar *escaped_filename = strrchr (uri, '/') + 1;
+	
+	if (! dmapd_util_hash_file (uri, raw_hash)) {
+		exit (EXIT_FAILURE);
+        }
 
-	dmap_hash_generate (1, (const guchar*) escaped_filename, 2, hash, 0);	
+	dmap_hash_progressive_to_string (raw_hash, hash);
+
 	printf ("%s\n", hash);
 
 	g_free (uri);

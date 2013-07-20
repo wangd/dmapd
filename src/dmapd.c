@@ -104,6 +104,7 @@ static gboolean enable_foreground        = FALSE;
 static gboolean enable_render            = FALSE;
 static gboolean enable_rt_transcode      = FALSE;
 static gboolean enable_version           = FALSE;
+static gboolean exit_after_loading       = FALSE;
 
 // FIXME: make non-global, support mult. remotes and free when done.
 // store persistently or set in config file?
@@ -159,6 +160,7 @@ static GOptionEntry entries[] = {
 	{ "max-thumbnail-width", 'w', 0, G_OPTION_ARG_INT, &max_thumbnail_width, "Maximum thumbnail size (may reduce memory use)", NULL },
 	{ "directory-containers", 'c', 0, G_OPTION_ARG_NONE, &enable_dir_containers, "Serve DMAP containers based on filesystem heirarchy", NULL },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &enable_version, "Print version number and exit", NULL },
+	{ "exit-after-loading", 'x', 0, G_OPTION_ARG_NONE, &exit_after_loading, "Exit after loading database (do not serve)", NULL },
 	{ NULL }
 };
 
@@ -666,7 +668,11 @@ int main (int argc, char *argv[])
 #endif
 	}
 
-	g_main_loop_run (loop);
+	if (! exit_after_loading) {
+		g_main_loop_run (loop);
+	}
+
+_done:
 
 	if (workers.daap_share)
 		g_object_unref (workers.daap_share);
