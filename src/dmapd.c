@@ -677,7 +677,7 @@ int main (int argc, char *argv[])
 
 _done:
 	if (NULL != loop) {
-		g_object_unref (loop);
+		g_main_loop_unref (loop);
 	}
 
 	if (NULL != workers.daap_share) {
