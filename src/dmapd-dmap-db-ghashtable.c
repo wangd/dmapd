@@ -231,6 +231,10 @@ dmapd_dmap_db_ghashtable_add_path (DMAPDb *db, const gchar *path)
 			id = dmapd_dmap_db_ghashtable_add (db, record);
 		}
 
+		if (NULL != format) {
+			g_free (format);
+		}
+
 		g_object_unref (record);
 	}
 

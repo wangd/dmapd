@@ -77,10 +77,11 @@ do_transcode (DAAPRecord *record, gchar *cachepath, gchar* target_mimetype)
 	gssize read_size;
 	gchar buf[BUFSIZ];
 	GError *error = NULL;
-	GInputStream *stream, *decoded_stream;
+	GInputStream *stream = NULL;
+	GInputStream *decoded_stream = NULL;
 	
 	stream = daap_record_read (record, &error);
-	if (! stream) {
+	if (NULL == stream) {
 		gchar *location = NULL;
 		g_object_get (record, "location", &location, NULL);
 		g_assert (NULL != location);
@@ -94,7 +95,7 @@ do_transcode (DAAPRecord *record, gchar *cachepath, gchar* target_mimetype)
 		gchar *location;
 		g_object_get (record, "location", &location, NULL);
 		g_assert (NULL != location);
-		g_warning ("Error opening %s", location);
+		g_warning ("Error opening %s: %s", location, error->message);
 		g_error_free (error);
 		g_free (location);
 		goto _return;

@@ -297,34 +297,35 @@ static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
 static GstElement *
 setup_pipeline (const char *sinkname)
 {
-	GstElement *pipeline, *src_decoder, *sink;
+	GstElement *pipeline = NULL, *src_decoder = NULL, *sink = NULL;
 
 	/* Set up pipeline. */
-	pipeline = gst_pipeline_new ("pipeline");
-
+	pipeline    = gst_pipeline_new ("pipeline");
 	src_decoder = gst_element_factory_make ("uridecodebin", "src-decoder");
-	sink = gst_element_factory_make (sinkname, "sink");
+	sink        = gst_element_factory_make (sinkname, "sink");
 
 	if (pipeline == NULL || src_decoder == NULL || sink == NULL) {
 		g_warning ("Error creating a GStreamer pipeline");
-		goto _error;
+		goto _done;
 	}
 
 	gst_bin_add_many (GST_BIN (pipeline),
-			  src_decoder,
-			  sink,
+			  g_object_ref (src_decoder),
+			  g_object_ref (sink),
 			  NULL);
 
 	g_debug ("    Created a pipeline.");
-	return pipeline;
 
-_error:
-	if (src_decoder != NULL)
+_done:
+	if (src_decoder != NULL) {
 		g_object_unref (src_decoder);
-	if (sink != NULL)
-		g_object_unref (sink);
+	}
 
-	return NULL;
+	if (sink != NULL) {
+		g_object_unref (sink);
+	}
+
+	return pipeline;
 }
 
 static gboolean
