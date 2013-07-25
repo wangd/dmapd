@@ -77,7 +77,7 @@ typedef struct workers_t {
 	AVRender  *av_render;
 } workers_t;
 
-GMainLoop *loop;
+GMainLoop *loop = NULL;
 
 static GSList  *music_dirs               = NULL;
 static GSList  *picture_dirs             = NULL;
@@ -494,6 +494,9 @@ int main (int argc, char *argv[])
 	stringleton_init ();
 
 	loop = g_main_loop_new (NULL, FALSE);
+	if (NULL == loop) {
+		g_error ("Could not allocate event loop");
+	}
 
 	if (getenv ("DMAPD_DEBUG") != NULL) {
 		g_log_set_handler ("libdmapsharing", G_LOG_LEVEL_DEBUG, debug_printf, NULL);
@@ -673,22 +676,31 @@ int main (int argc, char *argv[])
 	}
 
 _done:
+	if (NULL != loop) {
+		g_object_unref (loop);
+	}
 
-	if (workers.daap_share)
+	if (NULL != workers.daap_share) {
 		g_object_unref (workers.daap_share);
+	}
 
-	if (workers.dpap_share)
+	if (NULL != workers.dpap_share) {
 		g_object_unref (workers.dpap_share);
+	}
 
-	if (workers.dacp_share)
+	if (NULL != workers.dacp_share) {
 		g_object_unref (workers.dacp_share);
+	}
 
-	if (av_meta_reader)
+	if (NULL != av_meta_reader) {
 		g_object_unref (av_meta_reader);
-	if (workers.av_render)
+	}
+	if (NULL != workers.av_render) {
 		g_object_unref (workers.av_render);
-	if (photo_meta_reader)
+	}
+	if (NULL != photo_meta_reader) {
 		g_object_unref (photo_meta_reader);
+	}
 
 	free_globals ();
 	stringleton_deinit ();
