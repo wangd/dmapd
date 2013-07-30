@@ -1,4 +1,4 @@
-INCLUDES = \
+AM_CPPFLAGS = \
         -I$(top_srcdir) \
 	$(DMAPSHARING_CFLAGS) \
 	$(GLIB_CFLAGS) \
@@ -8,7 +8,11 @@ INCLUDES = \
 	$(AVAHI_CFLAGS) \
 	$(MAGICK_CFLAGS) \
 	$(GSTREAMER_CFLAGS) \
-	$(SOUP_CFLAGS)
+	$(SOUP_CFLAGS) \
+	$(CHECK_CFLAGS)
+
+AM_LDFLAGS = \
+	$(CHECK_LIBS)
 
 AM_CFLAGS = \
 	-DDEFAULT_DBDIR=\"$(DBDIR)\" \
@@ -60,8 +64,7 @@ dmapd_unit_test_SOURCES = \
 	dmapd-test-daap-record.c \
 	dmapd-test-parse-plugin-option.c
 
-dmapd_unit_test_LDADD = libdmapd.la @CHECK_LIBS@
-dmapd_unit_test_INCLUDES = @CHECK_CFLAGS@
+dmapd_unit_test_LDADD = libdmapd.la
 endif
 endif
 
