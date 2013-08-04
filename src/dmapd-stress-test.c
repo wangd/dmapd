@@ -73,8 +73,6 @@ process_record (gpointer id, DMAPRecord *record, gpointer user_data)
 		g_assert (desc1);
 		g_assert (desc2);
 
-		/* FIXME: also actually download media file. */
-
 		g_print ("%d: %s %s %s\n", GPOINTER_TO_UINT (id), desc1, desc2, location);
 	} else if (IS_DPAP_RECORD (record)) {
 		/* FIXME: print all record properties; need DAAP and DPAP version: */
@@ -87,8 +85,6 @@ process_record (gpointer id, DMAPRecord *record, gpointer user_data)
 		g_assert (location);
 		g_assert (desc1);
 		g_assert (desc2);
-
-		/* FIXME: also actually download media file. */
 
 		g_print ("%d: %s %s %s\n", GPOINTER_TO_UINT (id), desc1, desc2, location);
 	} else {
@@ -111,6 +107,8 @@ process_record (gpointer id, DMAPRecord *record, gpointer user_data)
 	g_free (location);
 	g_free (desc1);
 	g_free (desc2);
+	g_object_unref (soup_session);
+	g_object_unref (soup_message);
 }
 
 static DMAPMdnsBrowserServiceType
