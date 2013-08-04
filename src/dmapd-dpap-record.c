@@ -509,9 +509,6 @@ DmapdDPAPRecord *dmapd_dpap_record_new (const char *path, gpointer reader)
                 }
 	}
 
-	/* FIXME: where can this go (what is default value for pointer props?) */
-	record->priv->thumbnail = NULL;
-
 _done:
 	if (NULL != location) {
                 g_free (location);
