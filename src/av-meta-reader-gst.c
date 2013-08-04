@@ -331,18 +331,26 @@ _done:
 static gboolean
 av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *path)
 {
-	gchar *uri = g_filename_to_uri (path, NULL, NULL);
+	gchar *uri = NULL;
 	GstFormat fmt = GST_FORMAT_TIME;
 	gint64 nanoduration;
 	GstTagList *tags = NULL;
 	AVMetaReaderGst *gst_reader = AV_META_READER_GST (reader);	
 
+	uri = g_filename_to_uri (path, NULL, NULL);
+	if (NULL == uri) {
+		g_warning ("Error converting %s to URI\n", path);
+		goto _return;
+	}
+
 	g_mutex_lock (&gst_reader->priv->tag_read);
 
 	g_debug("Processing %s...", uri);
 
-	if (! (gst_reader->priv->pipeline = setup_pipeline ("fakesink")))
+	gst_reader->priv->pipeline = setup_pipeline ("fakesink");
+	if (NULL == gst_reader->priv->pipeline) {
 		goto _return;
+	}
 
 	gst_reader->priv->src_decoder = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "src-decoder");
 	gst_reader->priv->sink        = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "sink");
@@ -388,8 +396,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 		g_warning ("Failed in message reading for %s", uri);
 	}
 
-	if (transition_pipeline (gst_reader->priv->pipeline, GST_STATE_NULL) ==
-		FALSE) {
+	if (FALSE == transition_pipeline (gst_reader->priv->pipeline, GST_STATE_NULL)) {
 		g_error ("Failed to transition GStreamer state to NULL");
 	}
 
@@ -407,9 +414,22 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	}
 
 _return:
-	g_free (uri);
+	if (NULL != uri) {
+		g_free (uri);
+	}
 
-	gst_object_unref (gst_reader->priv->pipeline);
+	if (NULL != gst_reader->priv->pipeline) {
+		gst_object_unref (gst_reader->priv->pipeline);
+	}
+
+	if (NULL != gst_reader->priv->src_decoder) {
+		gst_object_unref (gst_reader->priv->src_decoder);
+	}
+
+	if (NULL != gst_reader->priv->sink) {
+		gst_object_unref (gst_reader->priv->sink);
+	}
+
 	av_meta_reader_gst_reset (gst_reader);
 
 	g_mutex_unlock (&gst_reader->priv->tag_read);
