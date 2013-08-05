@@ -215,7 +215,13 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 				g_object_set (record, "format", format, NULL);
 			}
 		} else if (! strcmp ("track-number", tag)) {
-			g_object_set (record, "track", atoi (val), NULL);
+			errno = 0;
+			long track = strtol (val, NULL, 10);
+			if (! errno) {
+				g_object_set (record, "track", track, NULL);
+			} else {
+				g_warning ("Error parsing track: %s", val);
+			}
 		} else {
 			g_debug ("    Unused metadata %s.", tag);
 		}
