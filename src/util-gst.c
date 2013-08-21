@@ -95,8 +95,7 @@ do_transcode (DAAPRecord *record, gchar *cachepath, gchar* target_mimetype)
 		gchar *location;
 		g_object_get (record, "location", &location, NULL);
 		g_assert (NULL != location);
-		g_warning ("Error opening %s: %s", location, error->message);
-		g_error_free (error);
+		g_warning ("Error opening %s", location);
 		g_free (location);
 		goto _return;
 	}

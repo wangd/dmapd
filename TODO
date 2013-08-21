@@ -1,20 +1,12 @@
-= AirPlay ======================================================================
+Start golem.local dmapd (photos and music) without .record files; does it crash?
 
-DACP client
+Why does client need to receive entire video before playing? No duration
+information? Does not seem to be the case for .ogv.
+	Can we speed up download of movie by increasing size of chunks transmitted?
 
-Support AirPlay, Pulseaudio, or ALSA
+Release new version of libdmapsharing.
 
-DMAPD_AV_RENDER_MODULE=gst:host=192.168.1.XXX ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
-
-Check documentation of *_MODULE
-
-Figure out how to handle remote pairing 
-
-Clean up FIXME's in av-render-gst.c
-
-Move GStreamer render module to libdmapsharing?
-
-= Short term ===================================================================
+Fix transcode to QuickTime
 
 Mike: dynamically adjust database when files are added to directories
 (inotify?). See "Kernel Korner - Intro to inotify"
@@ -89,6 +81,24 @@ int main (int argc, char *argv[])
 
 	printf ("DONE\n");
 }
+
+= AirPlay ======================================================================
+
+DACP client
+
+Support AirPlay, Pulseaudio, or ALSA
+
+DMAPD_AV_RENDER_MODULE=gst:host=192.168.1.XXX ./dmapd -f -m /var/db/BigDisk/Storage/Music/AC-DC/ -o
+
+Check documentation of *_MODULE
+
+Figure out how to handle remote pairing 
+
+Clean up FIXME's in av-render-gst.c
+
+Move GStreamer render module to libdmapsharing?
+
+= Short term ===================================================================
 
 Mike: split DB/cache directories; update packages?
 
