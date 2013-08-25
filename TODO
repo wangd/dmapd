@@ -1,5 +1,3 @@
-Start golem.local dmapd (photos and music) without .record files; does it crash?
-
 Why does client need to receive entire video before playing? No duration
 information? Does not seem to be the case for .ogv.
 	Can we speed up download of movie by increasing size of chunks transmitted?

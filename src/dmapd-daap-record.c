@@ -645,7 +645,7 @@ DmapdDAAPRecord *dmapd_daap_record_new (const char *path, AVMetaReader *reader)
 	} else {
 		record = DMAPD_DAAP_RECORD (g_object_new (TYPE_DMAPD_DAAP_RECORD, NULL));
 		if (NULL == record) {
-			g_warning ("Error allocating memory for record\n");
+			g_warning ("Error allocating memory for record");
 			goto _done;
 		}
 	}

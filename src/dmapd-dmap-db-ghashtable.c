@@ -151,14 +151,16 @@ load_cached_records (DMAPDb *db, const gchar *db_dir, DMAPRecordFactory *factory
 					if (blob) {
 						g_debug ("Adding cache: %s", path);
 						DMAPRecord *record = dmap_record_factory_create (factory, NULL);
-						if (dmap_record_set_from_blob (record, blob)) {
-							dmap_db_add (DMAP_DB (db), record);
-						} else {
-							g_warning ("Removing stale cache entry %s\n", path);
-							g_unlink (path);
+						if (NULL != record) {
+							if (dmap_record_set_from_blob (record, blob)) {
+								dmap_db_add (DMAP_DB (db), record);
+							} else {
+								g_warning ("Removing stale cache entry %s\n", path);
+								g_unlink (path);
+							}
+							g_object_unref (record);
 						}
 						g_byte_array_free (blob, TRUE);
-						g_object_unref (record);
 					}
 				}
 				g_free (path);

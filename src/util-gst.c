@@ -33,17 +33,37 @@
 gboolean
 pads_compatible (GstPad *pad1, GstPad *pad2)
 {
-        gboolean fnval;
+        gboolean fnval = FALSE;
         GstCaps *res, *caps1, *caps2;
 
         caps1 = gst_pad_query_caps (pad1, NULL);
         caps2 = gst_pad_query_caps (pad2, NULL);
+
+	if (NULL == caps1 || NULL == caps2) {
+		g_warning ("Could not get caps from pad");
+		goto done;
+	}
+
         res = gst_caps_intersect (caps1, caps2);
+	if (NULL == res) {
+		g_warning ("Could not get res from caps");
+		goto done;
+	}
+
         fnval = res && ! gst_caps_is_empty (res);
 
-        gst_caps_unref (res);
-        gst_caps_unref (caps2);
-        gst_caps_unref (caps1);
+done:
+	if (NULL != res) {
+		gst_caps_unref (res);
+	}
+
+	if (NULL != caps1) {
+		gst_caps_unref (caps1);
+	}
+
+	if (NULL != caps2) {
+		gst_caps_unref (caps2);
+	}
 
         return fnval;
 }
@@ -56,16 +76,12 @@ transition_pipeline (GstElement *pipeline, GstState state)
 
 	sret = gst_element_set_state (GST_ELEMENT (pipeline), state);
 	if (GST_STATE_CHANGE_ASYNC == sret) {
-		if (GST_STATE_CHANGE_SUCCESS != gst_element_get_state
-				(GST_ELEMENT (pipeline),
-				 &state,
-				 NULL,
-				 1 * GST_SECOND)) {
-			g_warning ("State change failed");
+		if (GST_STATE_CHANGE_SUCCESS != gst_element_get_state (GST_ELEMENT (pipeline), &state, NULL, GST_CLOCK_TIME_NONE)) {
+			g_warning ("Asynchronous state change failed");
 			fnval = FALSE;
 		}
 	} else if (sret != GST_STATE_CHANGE_SUCCESS) {
-		g_warning ("Could not read file.");
+		g_warning ("State change failed.");
 		fnval = FALSE;
 	}
 	return fnval;

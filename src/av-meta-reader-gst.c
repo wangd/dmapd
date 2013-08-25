@@ -32,6 +32,7 @@ struct AVMetaReaderGstPrivate {
 	GstElement *src_decoder;
 	GstElement *sink;
 	gboolean has_video;
+	gboolean pause_successful;
 };
 
 static void
@@ -76,28 +77,44 @@ av_meta_reader_gst_class_finalize (AVMetaReaderGstClass *klass)
 static gboolean
 message_loop (GstElement *element, GstTagList **tags)
 {
-	GstBus *bus;
-	GstMessage *message;
+	GstBus *bus = NULL;
+	GstMessage *message = NULL;
+	gboolean fnval = FALSE;
+
+	g_assert (NULL != element);
+	g_assert (NULL != tags);
 
 	bus = gst_element_get_bus (element);
-	g_return_val_if_fail (bus != NULL, FALSE);
-	g_return_val_if_fail (tags != NULL, FALSE);
+	if (NULL == bus) {
+		g_warning ("Error getting bus from element");
+		goto _return;
+	}
 
 	while ((message = gst_bus_pop (bus))) {
 		switch (GST_MESSAGE_TYPE (message)) {
 		case GST_MESSAGE_TAG: {
-			GstTagList *new_tags;
+			GstTagList *new_tags = NULL;
 
 			gst_message_parse_tag (message, &new_tags);
+			if (NULL == new_tags) {
+				g_warning ("Error parsing tags");
+				goto _return;
+			}
+
 			if (*tags) {
 				GstTagList *old_tags = *tags;
-				*tags = gst_tag_list_merge (old_tags,
-							    new_tags,
-							    GST_TAG_MERGE_KEEP);
+				*tags = gst_tag_list_merge (old_tags, new_tags, GST_TAG_MERGE_KEEP);
+
 				gst_tag_list_free (old_tags);
 				gst_tag_list_free (new_tags);
-			} else
+
+				if (NULL == *tags) {
+					g_warning ("Error merging tag lists");
+					goto _return;
+				}
+			} else {
 				*tags = new_tags;
+			}
 			break;
 		}
 		default:
@@ -105,9 +122,15 @@ message_loop (GstElement *element, GstTagList **tags)
 		}
 		gst_message_unref (message);
 	}
-	gst_object_unref (bus);
 
-	return TRUE;
+	fnval = TRUE;
+
+_return:
+	if (NULL != bus) {
+		gst_object_unref (bus);
+	}
+
+	return fnval;
 }
 
 static gchar *
@@ -158,6 +181,10 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 				g_assert_not_reached ();
 		} else {
 			val = g_strdup_value_contents (gst_tag_list_get_value_index (list, tag, i));
+			if (NULL == val) {
+				g_warning ("Could not get value contents");
+				goto done;
+			}
 		}
 
 		g_debug ("    Tag %s is %s.", tag, val);
@@ -227,12 +254,14 @@ insert_tag (const GstTagList * list, const gchar * tag, DAAPRecord *record)
 		}
 		g_free (val);
 	}
+done:
+	return;
 }
 
 static gboolean
-pause_pipeline (GstElement *pipeline)
+pause_pipeline (AVMetaReaderGstPrivate *priv)
 {
-	transition_pipeline (pipeline, GST_STATE_PAUSED);
+	priv->pause_successful = transition_pipeline (priv->pipeline, GST_STATE_PAUSED);
 
 	/* Run once. */
 	return FALSE;
@@ -250,25 +279,39 @@ quit_mainloop (GMainLoop *loop)
 static void
 no_more_pads_cb (GstElement *element, GMainLoop *loop)
 {
+	g_assert (NULL != loop);
+
 	quit_mainloop (loop);	
 }
 
 static void
-pad_added_cb (GstElement *decodebin, GstPad *pad, 
-	      AVMetaReaderGstPrivate *priv)
+pad_added_cb (GstElement *decodebin, GstPad *pad, AVMetaReaderGstPrivate *priv)
 {
-	GstCaps *caps;
-	const gchar *mimetype;
-	GstStructure *structure;
+	GstCaps *caps = NULL;
+	const gchar *mimetype = NULL;
+	GstStructure *structure = NULL;
+
+	g_assert (NULL != decodebin);
+	g_assert (NULL != pad);
+	g_assert (NULL != priv);
 
 	caps = gst_pad_query_caps (pad, NULL);
-	if (gst_caps_is_empty (caps) || gst_caps_is_any (caps)) {
+	if (NULL == caps || gst_caps_is_empty (caps) || gst_caps_is_any (caps)) {
 		g_warning ("Error getting caps from pad");
 		goto _return;
 	}
 
 	structure = gst_caps_get_structure (caps, 0);
+	if (NULL == structure) {
+		g_warning ("Error getting structure from caps");
+		goto _return;
+	}
+
 	mimetype = gst_structure_get_name (structure);
+	if (NULL == mimetype) {
+		g_warning ("Error getting mimetype from structure");
+		goto _return;
+	}
 
 	g_debug ("    Added pad with mimetype %s.", mimetype);
 
@@ -279,7 +322,10 @@ pad_added_cb (GstElement *decodebin, GstPad *pad,
 		GstPad *sink_pad;
 
 		sink_pad = gst_element_get_static_pad (priv->sink, "sink");
-		g_assert (sink_pad != NULL);
+		if (NULL == sink_pad) {
+			g_warning ("Error getting static sink pad");
+			goto _return;
+		}
 
 		if (pads_compatible (pad, sink_pad)) {
 			g_assert (! GST_PAD_IS_LINKED (sink_pad));
@@ -287,9 +333,11 @@ pad_added_cb (GstElement *decodebin, GstPad *pad,
 		}
 		gst_object_unref (sink_pad);
 	}
-	//g_free (mimetype); /* Mimetype is static, but free'ing it "fixes" leak! */
+
 _return:
-	gst_caps_unref (caps);
+	if (NULL != caps) {
+		gst_caps_unref (caps);
+	}
 }
 
 static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
@@ -298,12 +346,15 @@ static void av_meta_reader_gst_reset (AVMetaReaderGst *reader)
 	reader->priv->src_decoder = NULL;
 	reader->priv->sink = NULL;
 	reader->priv->has_video = FALSE;
+	reader->priv->pause_successful = FALSE;
 }
 
 static GstElement *
 setup_pipeline (const char *sinkname)
 {
 	GstElement *pipeline = NULL, *src_decoder = NULL, *sink = NULL;
+
+	g_assert (NULL != sinkname);
 
 	/* Set up pipeline. */
 	pipeline    = gst_pipeline_new ("pipeline");
@@ -315,10 +366,7 @@ setup_pipeline (const char *sinkname)
 		goto _done;
 	}
 
-	gst_bin_add_many (GST_BIN (pipeline),
-			  g_object_ref (src_decoder),
-			  g_object_ref (sink),
-			  NULL);
+	gst_bin_add_many (GST_BIN (pipeline), g_object_ref (src_decoder), g_object_ref (sink), NULL);
 
 	g_debug ("    Created a pipeline.");
 
@@ -342,6 +390,7 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	gint64 nanoduration;
 	GstTagList *tags = NULL;
 	AVMetaReaderGst *gst_reader = AV_META_READER_GST (reader);	
+	gboolean fnval = FALSE;
 
 	uri = g_filename_to_uri (path, NULL, NULL);
 	if (NULL == uri) {
@@ -361,15 +410,14 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	gst_reader->priv->src_decoder = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "src-decoder");
 	gst_reader->priv->sink        = gst_bin_get_by_name (GST_BIN (gst_reader->priv->pipeline), "sink");
 	
-	if (gst_reader->priv->src_decoder == NULL
-	 || gst_reader->priv->sink == NULL)
+	if (gst_reader->priv->src_decoder == NULL || gst_reader->priv->sink == NULL) {
+		g_warning ("Could get src_decoder or sink.");
 		goto _return;
+	}
 
 	g_object_set (G_OBJECT (gst_reader->priv->src_decoder), "uri", uri, NULL);
 
-	/* Connect callback to identify audio and/or video tracks
-	 * and link decoder to sink.
-	 */ 
+	/* Connect callback to identify audio and/or video tracks and link decoder to sink.  */ 
 	g_signal_connect (gst_reader->priv->src_decoder,
 			  "pad-added",
 			  G_CALLBACK (pad_added_cb),
@@ -382,16 +430,13 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 
 	/* Run main loop to allow decodebin to create pads. Quit on
 	 * "no-more-pads" signal. */
-	g_idle_add ((GSourceFunc) pause_pipeline, gst_reader->priv->pipeline);
-	g_timeout_add_seconds (1,
-			      (GSourceFunc) quit_mainloop,
-			       gst_reader->priv->loop);
+	g_idle_add ((GSourceFunc) pause_pipeline, gst_reader->priv);
+	g_timeout_add_seconds (1, (GSourceFunc) quit_mainloop, gst_reader->priv->loop);
 	g_main_loop_run (gst_reader->priv->loop);
 
-	if (! gst_element_query_duration (gst_reader->priv->sink,
-					  fmt,
-					 &nanoduration)) {
-		g_warning ("Could not determine duration of %s.", uri);
+	if (! gst_element_query_duration (gst_reader->priv->sink, fmt, &nanoduration)) {
+		g_warning ("Could not determine duration of %s; skipping", uri);
+		goto _return;
 	} else {
 		g_assert (fmt == GST_FORMAT_TIME);
 		/* NOTE: cast avoids segfault on MIPS32: */
@@ -399,27 +444,28 @@ av_meta_reader_gst_read (AVMetaReader *reader, DAAPRecord *record, const gchar *
 	}
 
 	if (! message_loop (GST_ELEMENT (gst_reader->priv->pipeline), &tags)) {
-		g_warning ("Failed in message reading for %s", uri);
-	}
-
-	if (FALSE == transition_pipeline (gst_reader->priv->pipeline, GST_STATE_NULL)) {
-		g_error ("Failed to transition GStreamer state to NULL");
+		goto _return;
 	}
 
 	/* NOTE: Must set has_video before calling insert_tag. */
 	g_object_set (record, "has-video", gst_reader->priv->has_video, NULL);
 
 	if (tags) {
-		gst_tag_list_foreach (tags,
-				     (GstTagForeachFunc) insert_tag,
-				      record);
-		gst_tag_list_free (tags);
-		tags = NULL;
+		gst_tag_list_foreach (tags, (GstTagForeachFunc) insert_tag, record);
 	} else {
 		g_warning ("No metadata found for %s", uri);
 	}
 
+	fnval = TRUE;
+
 _return:
+	if (NULL != gst_reader->priv->pipeline
+	 && TRUE  == gst_reader->priv->pause_successful) {
+		 if (FALSE == transition_pipeline (gst_reader->priv->pipeline, GST_STATE_NULL)) {
+			g_error ("Failed to transition GStreamer state to NULL");
+		}
+	}
+
 	if (NULL != uri) {
 		g_free (uri);
 	}
@@ -436,11 +482,15 @@ _return:
 		gst_object_unref (gst_reader->priv->sink);
 	}
 
+	if (NULL != tags) {
+		gst_tag_list_free (tags);
+	}
+
 	av_meta_reader_gst_reset (gst_reader);
 
 	g_mutex_unlock (&gst_reader->priv->tag_read);
 
-	return TRUE;
+	return fnval;
 }
 
 static void av_meta_reader_gst_register_type (GTypeModule *module);
