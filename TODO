@@ -2,8 +2,6 @@ Why does client need to receive entire video before playing? No duration
 information? Does not seem to be the case for .ogv.
 	Can we speed up download of movie by increasing size of chunks transmitted?
 
-Release new version of libdmapsharing.
-
 Fix transcode to QuickTime
 
 Mike: dynamically adjust database when files are added to directories
